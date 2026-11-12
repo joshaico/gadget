@@ -40,7 +40,7 @@ class FakeConsole:
 
 
 REPORT = {
-    "device_id": "hg-0123456789abcdef", "board": "esp32s3-touch-amoled-1.75", "firmware": "0.1.0",
+    "device_id": "jg-0123456789abcdef", "board": "esp32s3-touch-amoled-1.75", "firmware": "0.1.0",
     "reset_reason": "brownout", "uptime_s": 42,
     "parts": {"display": "co5300", "microphone": "es7210", "speaker": "es8311", "touch": True, "key": False},
     "i2c": ["0x18", "0x20", "0x34", "0x40", "0x5a"],
@@ -77,7 +77,7 @@ def test_diag_saves_a_report_and_prints_a_summary(console, tmp_path, capsys):
     assert '"reset_reason": "brownout"' in text
     assert text.rstrip().endswith("I (310) hg.main: Hermes Gadget 0.1.0\nW (950) hg.codec: speaker missing")
     shown = capsys.readouterr().out
-    assert "firmware 0.1.0 on esp32s3-touch-amoled-1.75 (hg-0123456789abcdef)" in shown
+    assert "firmware 0.1.0 on esp32s3-touch-amoled-1.75 (jg-0123456789abcdef)" in shown
     assert "reset reason: brownout, up 42 s" in shown
     assert "parts: display co5300, microphone es7210, speaker es8311, touch yes, key no" in shown
     assert "I2C: 0x18, 0x20, 0x34, 0x40, 0x5a" in shown

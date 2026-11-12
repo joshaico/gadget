@@ -1,4 +1,4 @@
-// Hermes Gadget Protocol v1 — device side constants and helpers.
+// Joshaico Gadget Protocol v2 — device side constants and helpers.
 // The normative description lives in docs/protocol.md.
 #pragma once
 
@@ -11,13 +11,13 @@
 
 namespace hg::proto {
 
-constexpr int kVersion = 1;
-constexpr const char* kSubprotocol = "hermes-gadget.v1";
+constexpr int kVersion = 2;
+constexpr const char* kSubprotocol = "joshaico-gadget.v2";
 // Domain-separation prefix for the auth MAC: HMAC(key, prefix + device_id + "|" + nonce).
-constexpr const char* kAuthContext = "hermes-gadget/v1|";
+constexpr const char* kAuthContext = "joshaico-gadget/v2|";
 // ...and for firmware updates: HMAC(key, prefix + device_id + "|" + nonce + "|" + sha256 + "|" + size).
-constexpr const char* kOtaContext = "hermes-gadget/v1|ota|";
-constexpr const char* kDeviceIdPrefix = "hg-";
+constexpr const char* kOtaContext = "joshaico-gadget/v2|ota|";
+constexpr const char* kDeviceIdPrefix = "jg-";
 
 // Binary frame layout: [channel u8][stream u8][seq u16 LE][payload ...]
 constexpr size_t kBinaryHeader = 4;
@@ -34,7 +34,7 @@ struct BinaryFrame {
 bool parse_binary(const uint8_t* data, size_t len, BinaryFrame& out);
 void write_binary_header(uint8_t* dst, Channel channel, uint8_t stream, uint16_t seq);
 
-// Device identity: "hg-" + first 16 hex chars of SHA-256(device key).
+// Device identity: "jg-" + first 16 hex chars of SHA-256(device key).
 std::string device_id_for_key(const uint8_t* key, size_t len);
 // Base64 HMAC proving possession of the device key for a server nonce.
 std::string auth_mac(const uint8_t* key, size_t key_len, std::string_view device_id, std::string_view nonce);

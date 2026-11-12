@@ -86,8 +86,8 @@ def _raw_handshake(url: str, device_id: str, auth: dict) -> dict:
     """Speak the handshake by hand, as a hostile client would."""
     from websockets.sync.client import connect
 
-    with connect(url, subprotocols=["hermes-gadget.v1"]) as ws:
-        ws.send(json.dumps({"type": "hello", "proto": 1, "device_id": device_id, "name": "x"}))
+    with connect(url, subprotocols=["joshaico-gadget.v2"]) as ws:
+        ws.send(json.dumps({"type": "hello", "proto": protocol.VERSION, "device_id": device_id, "name": "x"}))
         challenge = json.loads(ws.recv(timeout=5))
         ws.send(json.dumps({"type": "auth", **auth(challenge)}))
         return json.loads(ws.recv(timeout=5))
@@ -107,7 +107,7 @@ def test_impostors_cannot_take_over_an_enrolled_device(devserver, make_sim):
     reply = _raw_handshake(url, victim, lambda ch: {"mac": protocol.auth_mac(other_key, victim, ch["nonce"])})
     assert reply == {"type": "error", "code": "auth_failed", "message": reply["message"]}
     # Replaying an enrollment for someone else's id.
-    reply = _raw_handshake(url, "hg-0000000000000000", lambda ch: {"key": base64.b64encode(other_key).decode()})
+    reply = _raw_handshake(url, "jg-0000000000000000", lambda ch: {"key": base64.b64encode(other_key).decode()})
     assert reply["code"] == "auth_failed"
     # The genuine device is unaffected.
     real.console("reconnect")
@@ -469,7 +469,7 @@ def test_hello_declares_capabilities(devserver, make_sim):
     sim = make_sim(url)
     assert sim.wait_screen("ready", timeout=10)
     hello = next(m for m in sim.sent if m.get("type") == "hello")
-    assert hello["proto"] == 1
+    assert hello["proto"] == protocol.VERSION
     assert hello["caps"]["display"]["image"]["format"] == "rgb565"
     assert hello["caps"]["mic"] == {"rate": 16000, "format": "pcm16"}
     assert json.dumps(hello)  # serialisable

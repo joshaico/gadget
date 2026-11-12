@@ -27,7 +27,7 @@ RESULT_KEEP_S = 120.0
 MAX_TITLE = 64
 MAX_TEXT = 600
 _ID = re.compile(r"^[0-9a-f]{32}$")
-_DEVICE = re.compile(r"^hg-[0-9a-f]{16}$")
+_DEVICE = re.compile(r"^jg-[0-9a-f]{16}$")
 _ACTION = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 
 

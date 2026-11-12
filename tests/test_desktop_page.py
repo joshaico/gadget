@@ -26,7 +26,7 @@ from hermes_gadget_plugin.desk import Desk
 from hermes_gadget_plugin.store import DeviceStore
 
 DASHBOARD = REPO / "plugin" / "dashboard"
-DEVICE = "hg-0123456789abcdef"
+DEVICE = "jg-0123456789abcdef"
 
 
 # -- the request queue --------------------------------------------------------------------------
@@ -49,7 +49,7 @@ def test_a_card_goes_through_the_inbox_and_comes_back_done(tmp_path):
 
 
 @pytest.mark.parametrize("device, kind, fields, message", [
-    ("hg-nope", "card", {"text": "x"}, "unknown device"),
+    ("jg-nope", "card", {"text": "x"}, "unknown device"),
     ("../../etc", "card", {"text": "x"}, "unknown device"),
     (DEVICE, "reboot", {}, "unknown request"),
     (DEVICE, "card", {"title": " ", "text": ""}, "write something to show"),
@@ -249,7 +249,7 @@ def test_card_and_action_routes_refuse_bad_input_without_queueing(api):
     base = "/api/plugins/gadget/devices/"
     assert api.client.post(base + DEVICE + "/action", params={"name": "light.set", "args": "{nope"}).json() == {
         "ok": False, "error": "args must be JSON", "status": 400}
-    assert api.client.post(base + "hg-bad/card", params={"text": "x"}).json()["error"] == "unknown device"
+    assert api.client.post(base + "jg-bad/card", params={"text": "x"}).json()["error"] == "unknown device"
     assert api.client.post(base + DEVICE + "/card").json()["error"] == "write something to show"
     assert not list((api.dir / "desk").rglob("*.json"))
 

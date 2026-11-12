@@ -192,5 +192,5 @@ def test_a_device_with_a_bigger_buffer_is_sent_further_ahead_but_never_past_its_
 )
 def test_the_lead_follows_the_buffer_the_device_announces(speaker, lead):
     caps = {} if speaker is None else {"speaker": speaker}
-    session = hubmod.DeviceSession(None, SimpleNamespace(), {"device_id": "hg-1", "caps": caps})
+    session = hubmod.DeviceSession(None, SimpleNamespace(), {"device_id": "jg-1", "caps": caps})
     assert session.playback_lead_s == pytest.approx(lead)

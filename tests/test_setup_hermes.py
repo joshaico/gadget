@@ -15,7 +15,7 @@ from conftest import requires_hermes
 
 pytestmark = requires_hermes
 
-DEVICE = "hg-0123456789abcdef"
+DEVICE = "jg-0123456789abcdef"
 
 
 @pytest.fixture

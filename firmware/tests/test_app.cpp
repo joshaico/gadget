@@ -335,7 +335,7 @@ TEST("app: connects after boot and sends a hello describing the device") {
   const Value* hello = r.fake.last("hello");
   CHECK(hello != nullptr);
   if (!hello) return;
-  CHECK_EQ((*hello)["proto"].as_int(), int64_t(1));
+  CHECK_EQ((*hello)["proto"].as_int(), int64_t(2));
   CHECK_EQ((*hello)["device_id"].as_string(), r.app.device_id());
   CHECK_EQ((*hello)["board"].as_string(), std::string("test-board"));
   CHECK_EQ((*hello)["caps"]["display"]["width"].as_int(), int64_t(320));

@@ -113,12 +113,12 @@ TEST("protocol: identity and auth mac match the host implementation") {
   uint8_t key[32];
   for (int i = 0; i < 32; ++i) key[i] = static_cast<uint8_t>(i);
   std::string id = hg::proto::device_id_for_key(key, sizeof(key));
-  CHECK_EQ(id, std::string("hg-630dcd2966c43366"));
+  CHECK_EQ(id, std::string("jg-630dcd2966c43366"));
   CHECK_EQ(hg::proto::auth_mac(key, sizeof(key), id, "bm9uY2Utbm9uY2Utbm9uY2U="),
-           std::string("AMUEF53Phk8+1vHw7R8PgiDwlPd8rXUx+cgyYv1YJX0="));
+           std::string("8Lpy+BD0OYakrUa0ZELy5unRI6NNv+9lz4L3t4f/C38="));
   CHECK_EQ(hg::proto::ota_mac(key, sizeof(key), id, "AAECAwQFBgcICQoLDA0ODw==",
                               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 1234),
-           std::string("ieymn+y1CMEJ5uX8yGz8VrXxT2KKjSOnzJC5qagTTwk="));
+           std::string("oGPv7ClJ4QWCqwWSY0DVZoPFnlFELNZOXPJI0GcMjLE="));
 }
 
 TEST("protocol: binary frame header round trips") {

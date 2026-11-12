@@ -380,7 +380,7 @@ extern "C" void app_main(void) {
   const bool latch_power = board.latch_power.enabled && g_latch_power.begin(board.latch_power);
 #endif
   const char* version = esp_app_get_description()->version;
-  ESP_LOGI(TAG, "Hermes Gadget %s on %s", version, board.name);
+  ESP_LOGI(TAG, "Joshaico Gadget %s on %s", version, board.name);
 #if CONFIG_SPIRAM
 #if CONFIG_SPIRAM_MODE_OCT
   constexpr const char* kPsramMode = "octal";

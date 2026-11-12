@@ -14,7 +14,7 @@ FRAME_SAMPLES = 640
 
 
 class FakeSession:
-    device_id = "hg-test"
+    device_id = "jg-test"
 
     def __init__(self):
         self._upload = None

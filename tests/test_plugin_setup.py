@@ -9,7 +9,7 @@ import pytest
 
 from hermes_gadget_plugin import cli, setup
 
-DESK, KITCHEN = "hg-0123456789abcdef", "hg-fedcba9876543210"
+DESK, KITCHEN = "jg-0123456789abcdef", "jg-fedcba9876543210"
 SERVER = "ws://192.168.1.20:8765/gadget"
 
 
@@ -157,5 +157,5 @@ def test_pair_can_name_the_one_device_to_approve(monkeypatch, capsys):
     assert approvals.approved == {KITCHEN}
 
     with pytest.raises(SystemExit) as stop:
-        _pair(monkeypatch, devices, FakeApprovals({"ABCD2345": DESK}), yes=True, device="hg-0000000000000000")
+        _pair(monkeypatch, devices, FakeApprovals({"ABCD2345": DESK}), yes=True, device="jg-0000000000000000")
     assert "is not waiting to pair" in str(stop.value)

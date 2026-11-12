@@ -1,4 +1,4 @@
-// The installer page: choose a board, write its firmware, give it Wi-Fi and the Hermes address,
+// The installer page: choose a board, write its firmware, give it Wi-Fi and the Joshaico address,
 // then watch it pair. Everything happens between this page and the board, over Web Serial.
 
 import { checkChip, imageParts, linkParams, loadManifest, sha256, validServer } from "./lib/boards.js";
@@ -6,7 +6,7 @@ import { DeviceConsole, consoleSafe, redact } from "./lib/console.js";
 import { reportFileName, reportText } from "./lib/diagnostics.js";
 import { openConsole, reopen } from "./lib/serial.js";
 
-const REPO = "https://github.com/Adolanium/hermes-gadget-sdk";
+const REPO = "https://github.com/joshaico/gadget";
 const STEPS = ["step-board", "step-hermes", "step-install", "step-wifi", "step-pair"];
 const POLL_MS = 1500;
 const WIFI_PATIENCE_MS = 25000;
@@ -151,7 +151,7 @@ $("manage-existing").addEventListener("click", () => $("skip-install").click());
 
 $("skip-install").addEventListener("click", async () => {
   await disconnect();
-  $("board-summary").textContent = "Already running Hermes Gadget";
+  $("board-summary").textContent = "Already running Joshaico Gadget";
   $("install-summary").textContent = "Skipped";
   goTo("step-wifi");
 });
@@ -233,8 +233,8 @@ async function install() {
 
     state.port = await reopen(port);
     if (!state.port) log("The board didn't come back on the same port; the next step asks for it again.");
-    progress(`Installed Hermes Gadget ${state.manifest.version}.`, 1);
-    $("install-summary").textContent = `Hermes Gadget ${state.manifest.version} installed`;
+    progress(`Installed Joshaico Gadget ${state.manifest.version}.`, 1);
+    $("install-summary").textContent = `Joshaico Gadget ${state.manifest.version} installed`;
     goTo("step-wifi");
   } catch (error) {
     log(`Install failed: ${error?.message ?? error}`);
@@ -276,7 +276,7 @@ const FIELDS = {
 function formProblem(values) {
   if (!values.wifi_ssid) return ["ssid", "Enter the name of your Wi-Fi network."];
   if (!validServer(values.server)) {
-    return ["server", "Enter the Hermes address, starting with ws:// or wss://, for example ws://192.168.1.20:8765/gadget."];
+    return ["server", "Enter the Joshaico address, starting with ws:// or wss://, for example ws://192.168.1.20:8765/gadget."];
   }
   for (const [key, [field, label]] of Object.entries(FIELDS)) {
     if (!consoleSafe(values[key])) {
@@ -376,14 +376,14 @@ function watchPairing(values) {
     const reached = s.phase === "online" || Boolean(s.pairing_code);
     if (s.network && onWifiSince == null) onWifiSince = Date.now();
     check("check-wifi", s.network ? "done" : "active", s.network ? `On ${values.wifi_ssid}` : `Joining ${values.wifi_ssid}`);
-    check("check-hermes", reached ? "done" : s.network ? "active" : "pending", reached ? "Connected to Hermes" : "Reaching Hermes");
+    check("check-hermes", reached ? "done" : s.network ? "active" : "pending", reached ? "Connected to Joshaico" : "Reaching Joshaico");
     const paired = s.paired && s.phase === "online";
     check("check-paired", paired ? "done" : reached ? "active" : "pending", paired ? "Paired" : "Waiting for your approval");
 
     show("pairing", Boolean(s.pairing_code) && !paired);
     if (s.pairing_code) {
       $("pair-code").textContent = s.pairing_code;
-      $("approve-command").textContent = `hermes pairing approve gadget ${s.pairing_code}`;
+      $("approve-command").textContent = `joshaico pairing approve gadget ${s.pairing_code}`;
     }
     let hint = "";
     if (s.error) {
@@ -391,13 +391,13 @@ function watchPairing(values) {
     } else if (!s.network && Date.now() - started > WIFI_PATIENCE_MS) {
       hint = `The board hasn't joined ${values.wifi_ssid} yet. Check the password, and that it's a 2.4 GHz network.`;
     } else if (s.network && !reached && Date.now() - onWifiSince > HERMES_PATIENCE_MS) {
-      hint = `The board is on Wi-Fi but can't reach Hermes at ${values.server}. Check the address with `
-        + "hermes gadget info, that the gateway is running, and that its firewall allows port 8765.";
+      hint = `The board is on Wi-Fi but can't reach Joshaico at ${values.server}. Check the address with `
+        + "joshaico gadget info, that the gateway is running, and that its firewall allows port 8765.";
     }
     setNotice("pair-hint", hint);
     if (paired) {
       const device = values.name || s.device_id;
-      const update = `hermes gadget update ${/\s/.test(device) ? `"${device}"` : device} --latest`;
+      const update = `joshaico gadget update ${/\s/.test(device) ? `"${device}"` : device} --latest`;
       $("update-command").textContent = update;
       $("update-copy").dataset.copy = update;
       show("pair-done");

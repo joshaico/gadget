@@ -850,7 +850,7 @@ def _sent_faces(tmp_path: Path, home: Path, change=None) -> list:
     async def run():
         wire = _MediaWire()
         hub = DeviceHub(DeviceStore(tmp_path / "store"), Profile())
-        session = DeviceSession(hub, wire, {"device_id": "hg-1", "caps": {"faces": {"v": 2, "px": 144, "frames": True}}})
+        session = DeviceSession(hub, wire, {"device_id": "jg-1", "caps": {"faces": {"v": 2, "px": 144, "frames": True}}})
         session.paired = True
         hub.sessions[session.device_id] = session
         await session.update_face()

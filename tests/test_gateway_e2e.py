@@ -191,7 +191,7 @@ tts:
 
 # A device key known in advance, so its id can be an admin in the config before the gateway starts.
 ADMIN_KEY = bytes(range(101, 133))
-ADMIN_DEVICE = "hg-" + __import__("hashlib").sha256(ADMIN_KEY).hexdigest()[:16]
+ADMIN_DEVICE = "jg-" + __import__("hashlib").sha256(ADMIN_KEY).hexdigest()[:16]
 
 
 def _face(profile: str) -> bytes:

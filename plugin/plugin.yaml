@@ -33,7 +33,7 @@ optional_env:
     prompt: "Gadget access token (or empty)"
     password: true
   - name: GADGET_ALLOWED_USERS
-    description: "Comma-separated device ids allowed without pairing (e.g. hg-0123456789abcdef)"
+    description: "Comma-separated device ids allowed without pairing (e.g. jg-0123456789abcdef)"
     prompt: "Allowed gadget device ids (or empty to use pairing codes)"
     password: false
   - name: GADGET_ALLOW_ALL_USERS

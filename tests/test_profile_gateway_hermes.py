@@ -359,7 +359,7 @@ def test_a_device_that_leaves_takes_its_push_order_with_it(hermes_home, gadget):
         while gone in gadget.adapter._pushed_seq and time.monotonic() < end:
             time.sleep(0.02)
         assert gone not in gadget.adapter._pushed_seq and stays in gadget.adapter._pushed_seq
-    gadget.adapter._pushed_seq["hg-0000000000000000"] = 1  # as a push still finishing at shutdown leaves
+    gadget.adapter._pushed_seq["jg-0000000000000000"] = 1  # as a push still finishing at shutdown leaves
     gadget.run(gadget.adapter.disconnect())
     assert gadget.adapter._pushed_seq == {}
 
@@ -592,7 +592,7 @@ def test_a_board_no_longer_offered_or_replaced_loses_its_listener(hermes_home, g
         assert reloaded._listeners == []  # nothing wakes the dashboard for a profile it no longer shows
 
 
-DEVICE = "hg-cccccccccccccccc"
+DEVICE = "jg-cccccccccccccccc"
 
 
 def _ops_route(device):
@@ -875,8 +875,8 @@ class _RawDevice:
         from hermes_gadget_plugin import protocol
 
         device = protocol.device_id_for_key(key)
-        self.ws = connect(url, subprotocols=["hermes-gadget.v1"])
-        self.ws.send(json.dumps({"type": "hello", "proto": 1, "device_id": device, "name": "Kitchen",
+        self.ws = connect(url, subprotocols=["joshaico-gadget.v2"])
+        self.ws.send(json.dumps({"type": "hello", "proto": protocol.VERSION, "device_id": device, "name": "Kitchen",
                                  "board": "raw", "firmware": "0.1.0", "caps": caps,
                                  **({"profile": profile} if profile else {})}))
         challenge = json.loads(self.ws.recv(timeout=5))

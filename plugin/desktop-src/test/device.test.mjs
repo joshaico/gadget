@@ -8,8 +8,8 @@ import { authMac, createDevice, deviceIdFor, frame, parseFrame, rgb565ToRgba } f
 const KEY = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8='
 
 test('device id and auth MAC match the server', async () => {
-  assert.equal(await deviceIdFor(KEY), 'hg-630dcd2966c43366')
-  assert.equal(await authMac(KEY, 'hg-630dcd2966c43366', 'bm9uY2Ux'), 'ldURlmsN/WvXFaeRU14c4QgVEKaaQ7y2Ho/9SG0DGHE=')
+  assert.equal(await deviceIdFor(KEY), 'jg-630dcd2966c43366')
+  assert.equal(await authMac(KEY, 'jg-630dcd2966c43366', 'bm9uY2Ux'), 'T7lV7gGPfYpxT5A/1+h4uWfgZlon13MdXIuqHHmlYWI=')
 })
 
 test('binary frames carry channel, stream and a little-endian sequence', () => {
@@ -53,17 +53,17 @@ test('handshake, pairing, a typed turn and an action', async () => {
   await dev.connect()
   await tick()
   const ws = FakeSocket.last
-  assert.equal(ws.proto, 'hermes-gadget.v1')
+  assert.equal(ws.proto, 'joshaico-gadget.v2')
   const hello = ws.sent[0]
   assert.equal(hello.type, 'hello')
-  assert.equal(hello.device_id, 'hg-630dcd2966c43366')
+  assert.equal(hello.device_id, 'jg-630dcd2966c43366')
   assert.deepEqual(hello.actions.map(a => a.name), ['light.set', 'timer.start'])
 
   ws.serve({ type: 'challenge', nonce: 'bm9uY2Ux', enrolled: false })
   await tick()
   assert.deepEqual(ws.sent[1], { type: 'auth', key: KEY })
   ws.serve({ type: 'welcome', paired: false })
-  ws.serve({ type: 'pairing', code: 'ABCD2345', command: 'hermes pairing approve gadget ABCD2345' })
+  ws.serve({ type: 'pairing', code: 'ABCD2345', command: 'joshaico pairing approve gadget ABCD2345' })
   assert.equal(dev.state.pairingCode, 'ABCD2345')
   assert.equal(dev.sendText('hi'), false, 'nothing is sent before pairing')
   ws.serve({ type: 'paired' })
@@ -87,7 +87,7 @@ test('handshake, pairing, a typed turn and an action', async () => {
 
   ws.serve({ type: 'challenge', nonce: 'bm9uY2Ux', enrolled: true })
   await tick()
-  assert.deepEqual(ws.sent.at(-1), { type: 'auth', mac: 'ldURlmsN/WvXFaeRU14c4QgVEKaaQ7y2Ho/9SG0DGHE=' })
+  assert.deepEqual(ws.sent.at(-1), { type: 'auth', mac: 'T7lV7gGPfYpxT5A/1+h4uWfgZlon13MdXIuqHHmlYWI=' })
   ws.serve({ type: 'ping', ts: 5 })
   assert.deepEqual(ws.sent.at(-1), { type: 'pong', ts: 5 })
   dev.disconnect()

@@ -44,7 +44,7 @@ function fakeBoard(app, { swallow = 1, chunk = 7 } = {}) {
   return { port: { readable, writable }, received, end };
 }
 
-const STATUS = { device_id: "hg-0123456789abcdef", phase: "no_network", paired: false };
+const STATUS = { device_id: "jg-0123456789abcdef", phase: "no_network", paired: false };
 
 test("quoting gets spaces, quotes and backslashes through, and secrets stay out of the log", () => {
   assert.equal(quoteArg('my "home" \\ net'), '"my \\"home\\" \\\\ net"');

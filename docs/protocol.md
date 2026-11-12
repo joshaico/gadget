@@ -1,12 +1,12 @@
-# Hermes Gadget Protocol, version 1
+# Joshaico Gadget Protocol, version 2
 
-This is the contract between a device and the gadget plugin running inside the Hermes gateway. The device side lives in `firmware/core` (C++) and the server side in `plugin/hub.py` (Python). Both test suites pin the same vectors, so the two sides cannot drift apart without a test failing.
+This is the contract between a device and the gadget plugin running inside the Joshaico gateway. The device side lives in `firmware/core` (C++) and the server side in `plugin/hub.py` (Python). Both test suites pin the same vectors, so the two sides cannot drift apart without a test failing.
 
 ## Transport
 
-- One WebSocket per device: `ws://<hermes-host>:<port><path>`. The defaults are port `8765` and path `/gadget`. Run `hermes gadget info` on the host to print the exact URL.
+- One WebSocket per device: `ws://<joshaico-host>:<port><path>`. The defaults are port `8765` and path `/gadget`. Run `joshaico gadget info` on the host to print the exact URL.
 - Use `wss://` when the plugin is configured with `tls_cert`/`tls_key`.
-- Subprotocol: `hermes-gadget.v1`. Devices should offer it, and the server accepts connections that don't.
+- Subprotocol: `joshaico-gadget.v2`. Devices should offer it, and the server accepts connections that don't.
 - **Text frames** carry UTF-8 JSON objects. Every object has a `"type"` field. Fields that aren't needed are omitted rather than sent as `null`.
 - **Binary frames** carry media and start with a 4-byte header:
 
@@ -39,7 +39,7 @@ device                                   server
 Each device generates a random 32-byte **device key** on first boot and keeps it in NVS. Its id is derived from the key:
 
 ```
-device_id = "hg-" + hex(sha256(key))[0:16]
+device_id = "jg-" + hex(sha256(key))[0:16]
 ```
 
 Because the id is derived from the key, nobody can claim another device's id without that device's key.
@@ -47,7 +47,7 @@ Because the id is derived from the key, nobody can claim another device's id wit
 ### `hello` (device → server)
 
 ```json
-{"type": "hello", "proto": 1, "device_id": "hg-630dcd2966c43366",
+{"type": "hello", "proto": 2, "device_id": "jg-630dcd2966c43366",
  "name": "Kitchen Gadget", "board": "esp32s3-breadboard", "firmware": "0.1.0",
  "token": "<optional access token>",
  "caps": {
@@ -89,15 +89,15 @@ Because the id is derived from the key, nobody can claim another device's id wit
 - **Later connections** (`enrolled: true`): `{"type": "auth", "mac": "<base64 HMAC>"}`, where:
 
   ```
-  mac = HMAC-SHA256(key, "hermes-gadget/v1|" + device_id + "|" + nonce)
+  mac = HMAC-SHA256(key, "joshaico-gadget/v2|" + device_id + "|" + nonce)
   ```
 
-If authentication fails, the server sends `{"type": "error", "code": "auth_failed", ...}` and closes the connection. A device that lost its key (factory reset) re-enrolls after the owner runs `hermes gadget forget <device_id>`.
+If authentication fails, the server sends `{"type": "error", "code": "auth_failed", ...}` and closes the connection. A device that lost its key (factory reset) re-enrolls after the owner runs `joshaico gadget forget <device_id>`.
 
 ### `welcome` (server → device)
 
 ```json
-{"type": "welcome", "session": "3f2a9c1b7d4e", "paired": false, "heartbeat_s": 20, "server": "hermes", "proto": 1,
+{"type": "welcome", "session": "3f2a9c1b7d4e", "paired": false, "heartbeat_s": 20, "server": "joshaico", "proto": 2,
  "language": "es"}
 ```
 
@@ -106,7 +106,7 @@ If authentication fails, the server sends `{"type": "error", "code": "auth_faile
 `paired` reports whether Hermes will accept messages from this device. Authorization is enforced by Hermes itself on every message; the flag only drives the device UI.
 
 ```json
-{"type": "welcome", "session": "3f2a9c1b7d4e", "paired": true, "heartbeat_s": 20, "server": "hermes", "proto": 1,
+{"type": "welcome", "session": "3f2a9c1b7d4e", "paired": true, "heartbeat_s": 20, "server": "joshaico", "proto": 2,
  "profile": "ops", "profiles": [{"id": "default", "name": "Hermes"}, {"id": "ops", "name": "Ops"}]}
 ```
 
@@ -118,7 +118,7 @@ If authentication fails, the server sends `{"type": "error", "code": "auth_faile
 
 | Message | Direction | Meaning |
 |---|---|---|
-| `{"type": "pairing", "code": "ABCD2345", "command": "hermes pairing approve gadget ABCD2345"}` | server → device | Show this code; the owner approves it on the Hermes host |
+| `{"type": "pairing", "code": "ABCD2345", "command": "joshaico pairing approve gadget ABCD2345"}` | server → device | Show this code; the owner approves it on the Hermes host |
 | `{"type": "paired"}` | server → device | Approved (no reconnect needed) |
 | `{"type": "unpaired"}` | server → device | Approval was revoked |
 | `{"type": "unpaired", "reason": "routed"}` | server → device | Refused, and no pairing code can let it in: a gateway route sends this device, which answers to the default profile, to another profile. The server sends it when the refusal starts, also to a device that is already unpaired, and after `welcome`, in place of a pairing code. The device drops any pairing code it showed and shows why until `paired`, `pairing`, a plain `unpaired` or the next `welcome`; for a reason it doesn't know, it shows the normal pairing screen, but `status` still reports it as `unpaired_reason` |
@@ -134,7 +134,7 @@ A Hermes gateway can serve several profiles (each with its own memory, personali
 | `{"type": "profile", "profile": "default", "error": "busy"}` | server → device | The request was refused; `profile` is unchanged. `error` is `unknown`, `busy` (a turn or question is pending), `unpaired` or `routed` |
 | `{"type": "profiles", "profiles": [{"id": "default", "name": "Hermes"}, {"id": "ops", "name": "Ops"}]}` | server → device | The profiles the device may use changed since `welcome` (one created, deleted, parked or taken off the offer); the list replaces `welcome.profiles` |
 
-The server sends `profiles` only to a device that sent `caps.profiles: true`, and only when that device's list changes; its entries are those of `welcome.profiles`. It doesn't change the profile answering the device: when that profile leaves the list, the server sends `profile` with `default` as well. A device that doesn't know `profiles` ignores it, as it ignores any unknown message type, and gets the new list at its next welcome. The reference firmware replaces its list and, if the profile grid is open, redraws it on the same page, or on the last page when the list got shorter; with no other profile left, the grid closes. The Hermes plugin compares each device's list with Hermes's profiles at every pairing check, every 2 seconds, so a profile made with `hermes profile create` or in Hermes Desktop shows on the device within a few seconds, without a reconnect or a gateway restart.
+The server sends `profiles` only to a device that sent `caps.profiles: true`, and only when that device's list changes; its entries are those of `welcome.profiles`. It doesn't change the profile answering the device: when that profile leaves the list, the server sends `profile` with `default` as well. A device that doesn't know `profiles` ignores it, as it ignores any unknown message type, and gets the new list at its next welcome. The reference firmware replaces its list and, if the profile grid is open, redraws it on the same page, or on the last page when the list got shorter; with no other profile left, the grid closes. The Hermes plugin compares each device's list with Hermes's profiles at every pairing check, every 2 seconds, so a profile made with `joshaico profile create` or in Hermes Desktop shows on the device within a few seconds, without a reconnect or a gateway restart.
 
 A refusal changes nothing on the device. `error` is `routed` when the server's configuration routes this device to a profile; such a device gets no `profiles` in `welcome`. The server may also send `profile` on its own, for example `default` after the device's approval is revoked. A device that does not send `caps.profiles` keeps the gateway's existing routing (normally the default profile).
 
@@ -269,7 +269,7 @@ A device whose screen goes dark (a timeout, the power key, or lying face down) t
 
 ### Dashboard
 
-A device that advertises `caps.dashboard` gets a live summary of Hermes: the agent's sessions, and status tiles the owner sets on the host (`hermes gadget tile`). Each message is a complete snapshot that replaces the last one:
+A device that advertises `caps.dashboard` gets a live summary of Hermes: the agent's sessions, and status tiles the owner sets on the host (`joshaico gadget tile`). Each message is a complete snapshot that replaces the last one:
 
 ```json
 {"type": "dashboard", "v": 1,
@@ -319,7 +319,7 @@ A device with a camera may advertise `camera.capture` in `hello.actions`; it tak
 {"format":"rgb565le","width":640,"height":512,"image_b64":"<base64>"}
 ```
 
-`image_b64` is Base64-encoded, tightly packed, row-major RGB565 pixels in little-endian byte order, with no row padding. For the 7B port, the maximum dimensions are 640×512 (655,360 decoded bytes; 873,816 Base64 characters). For the CoreS3 port, the maximum dimensions are 640×480 (614,400 decoded bytes; 819,200 Base64 characters). The full result stays below the gateway's current 1 MiB action-frame limit. Other camera ports must keep the serialized result within their transport's frame limit. On capture failure, the device uses the existing `action.result` error form; no new message type is introduced. The plugin saves a successful result as a PNG under `~/.hermes/gadgetpix/` and gives the agent the file's path, width, height and size, never `image_b64`.
+`image_b64` is Base64-encoded, tightly packed, row-major RGB565 pixels in little-endian byte order, with no row padding. For the 7B port, the maximum dimensions are 640×512 (655,360 decoded bytes; 873,816 Base64 characters). For the CoreS3 port, the maximum dimensions are 640×480 (614,400 decoded bytes; 819,200 Base64 characters). The full result stays below the gateway's current 1 MiB action-frame limit. Other camera ports must keep the serialized result within their transport's frame limit. On capture failure, the device uses the existing `action.result` error form; no new message type is introduced. The plugin saves a successful result as a PNG under `~/.joshaico/gadgetpix/` and gives the agent the file's path, width, height and size, never `image_b64`.
 
 ### Telemetry and events (device → server)
 
@@ -358,7 +358,7 @@ server                                   device
 | `{"type": "ota.abort"}` | server → device | Abandon the update in progress |
 
 ```
-mac = HMAC-SHA256(key, "hermes-gadget/v1|ota|" + device_id + "|" + nonce + "|" + sha256_hex + "|" + size)
+mac = HMAC-SHA256(key, "joshaico-gadget/v2|ota|" + device_id + "|" + nonce + "|" + sha256_hex + "|" + size)
 ```
 
 - `sha256_hex` is the lowercase hex SHA-256 of the whole image, and `size` its length in decimal.

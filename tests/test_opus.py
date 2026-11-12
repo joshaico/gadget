@@ -34,7 +34,7 @@ class Session:
         self.caps = {"speaker": {"rate": RATE, "format": "pcm16", "formats": formats}} if formats else {
             "speaker": {"rate": RATE, "format": "pcm16"}}
         self.hub = SimpleNamespace(opus_bitrate=bitrate)
-        self.device_id = "hg-test"
+        self.device_id = "jg-test"
         self.messages: list[dict] = []
         self.frames: list[bytes] = []
 

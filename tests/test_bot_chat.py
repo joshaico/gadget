@@ -12,7 +12,7 @@ from hermes_gadget_plugin import botchat, cli
 from hermes_gadget_plugin import status as live_status
 from hermes_gadget_plugin.store import DeviceStore
 
-DEVICE_ID = "hg-630dcd2966c43366"
+DEVICE_ID = "jg-630dcd2966c43366"
 KEY = bytes(range(32))
 
 
@@ -160,7 +160,7 @@ def test_a_profile_without_a_bot_chat_says_how_to_make_one(rig):
 @requires_hermes
 def test_a_gadget_that_is_not_an_admin_gets_the_config_to_add(rig):
     """/resume --all needs an admin: the command prints the YAML that makes the gadget one."""
-    rig.extra["allow_admin_from"] = ["hg-0000000000000000"]
+    rig.extra["allow_admin_from"] = ["jg-0000000000000000"]
     with pytest.raises(SystemExit) as exit_:
         _run()
     assert f"allow_admin_from: [{DEVICE_ID}]" in str(exit_.value)

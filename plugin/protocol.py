@@ -1,4 +1,4 @@
-"""Hermes Gadget Protocol v1 — server-side constants and helpers.
+"""Joshaico Gadget Protocol v2 — server-side constants and helpers.
 
 The normative description lives in ``docs/protocol.md``; the device side is
 ``firmware/core/include/hg/protocol.hpp``. Both sides are pinned to the same
@@ -15,12 +15,12 @@ import re
 import struct
 from dataclasses import dataclass
 
-VERSION = 1
-SUBPROTOCOL = "hermes-gadget.v1"
-AUTH_CONTEXT = b"hermes-gadget/v1|"
-OTA_CONTEXT = b"hermes-gadget/v1|ota|"
-DEVICE_ID_PREFIX = "hg-"
-DEVICE_ID_RE = re.compile(r"^hg-[0-9a-f]{16}$")
+VERSION = 2
+SUBPROTOCOL = "joshaico-gadget.v2"
+AUTH_CONTEXT = b"joshaico-gadget/v2|"
+OTA_CONTEXT = b"joshaico-gadget/v2|ota|"
+DEVICE_ID_PREFIX = "jg-"
+DEVICE_ID_RE = re.compile(r"^jg-[0-9a-f]{16}$")
 KEY_BYTES = 32
 
 BINARY_HEADER = 4

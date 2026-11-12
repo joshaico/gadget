@@ -1564,7 +1564,7 @@ BoardConfig make() {
   return b;
 }
 #else
-#error "Select a board in menuconfig (Hermes Gadget -> Board)"
+#error "Select a board in menuconfig (Joshaico Gadget -> Board)"
 #endif
 
 }  // namespace

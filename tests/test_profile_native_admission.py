@@ -13,9 +13,9 @@ def _adapter_and_source(hermes_home, tmp_path):
 
     adapter = GadgetAdapter(PlatformConfig(enabled=True, extra={"profiles": "all"}))
     adapter._store = DeviceStore(tmp_path / "devices")
-    adapter._owner_check = lambda user, *args: user == "hg-cccccccccccccccc"
-    source = SessionSource(platform=Platform("gadget"), chat_id="hg-cccccccccccccccc",
-                           user_id="hg-cccccccccccccccc", chat_type="dm", profile="ops")
+    adapter._owner_check = lambda user, *args: user == "jg-cccccccccccccccc"
+    source = SessionSource(platform=Platform("gadget"), chat_id="jg-cccccccccccccccc",
+                           user_id="jg-cccccccccccccccc", chat_type="dm", profile="ops")
     adapter._store.bind_to_owner(source.user_id)
     return adapter, source
 
@@ -50,7 +50,7 @@ def test_native_route_refuses_invalid_selection(hermes_home, tmp_path, case):
     elif case == "no_store":
         adapter._store = None
     elif case == "wrong_user":
-        source.user_id = "hg-dddddddddddddddd"
+        source.user_id = "jg-dddddddddddddddd"
     elif case == "group":
         source.chat_type = "group"
     elif case == "relay":

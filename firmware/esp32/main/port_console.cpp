@@ -49,7 +49,7 @@ void begin() {
   for (const char* name : kCommands) {
     esp_console_cmd_t cmd = {};
     cmd.command = name;
-    cmd.help = "Hermes Gadget command (see: help)";
+    cmd.help = "Joshaico Gadget command (see: help)";
     cmd.func = &run;
     esp_console_cmd_register(&cmd);
   }

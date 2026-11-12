@@ -15,7 +15,7 @@ from fakes.fake_firmware import fake_image
 from hermes_gadget_plugin import cli, ota, releases
 from hermes_gadget_plugin.store import DeviceStore
 
-DEVICE_ID = "hg-630dcd2966c43366"
+DEVICE_ID = "jg-630dcd2966c43366"
 KEY = bytes(range(32))
 BOARD = "esp32s3-touch-amoled-1.75"
 

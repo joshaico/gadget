@@ -55,11 +55,11 @@ def test_camera_capture_saves_timestamped_png_under_gateway_home(monkeypatch, tm
         "image_b64": base64.b64encode(pixels).decode("ascii"),
     }
 
-    saved = save_camera_capture(result, "hg-test")
+    saved = save_camera_capture(result, "jg-test")
 
     path = Path(saved["path"])
     assert path.parent == tmp_path / ".hermes" / "gadgetpix"
-    assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z_hg-test\.png", path.name)
+    assert re.fullmatch(r"\d{8}T\d{6}\.\d{6}Z_jg-test\.png", path.name)
     assert path.is_file()
     assert saved["format"] == "png"
     assert saved["size_bytes"] == path.stat().st_size
@@ -73,7 +73,7 @@ def test_camera_capture_saves_timestamped_png_under_gateway_home(monkeypatch, tm
 def test_camera_capture_rejects_bad_payload_and_oversized_dimensions(tmp_path):
     invalid_base64 = {"format": "rgb565le", "width": 1, "height": 1, "image_b64": "%%%"}
     with pytest.raises(ValueError, match="base64"):
-        save_camera_capture(invalid_base64, "hg-test", tmp_path)
+        save_camera_capture(invalid_base64, "jg-test", tmp_path)
 
     oversized = {
         "format": "rgb565le",
@@ -82,7 +82,7 @@ def test_camera_capture_rejects_bad_payload_and_oversized_dimensions(tmp_path):
         "image_b64": base64.b64encode(bytes(641 * 2)).decode("ascii"),
     }
     with pytest.raises(ValueError, match="unsupported camera size"):
-        save_camera_capture(oversized, "hg-test", tmp_path)
+        save_camera_capture(oversized, "jg-test", tmp_path)
 
 
 def test_camera_action_returns_saved_png_metadata_not_base64(monkeypatch):
@@ -94,7 +94,7 @@ def test_camera_action_returns_saved_png_metadata_not_base64(monkeypatch):
     result = {"format": "rgb565le", "width": 1, "height": 1, "image_b64": "AA=="}
     saved = {"path": "/home/test/.hermes/gadgetpix/photo.png", "format": "png", "width": 1,
              "height": 1, "size_bytes": 68}
-    session = SimpleNamespace(name="camera-device", device_id="hg-test", paired=True,
+    session = SimpleNamespace(name="camera-device", device_id="jg-test", paired=True,
                               invoke_action=lambda *args, **kwargs: object())
     adapter = object()
     monkeypatch.setattr(tools, "_adapter", lambda: adapter)

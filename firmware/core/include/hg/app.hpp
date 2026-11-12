@@ -39,7 +39,7 @@ enum class TalkMode : uint8_t {
 struct DeviceProfile {
   std::string board = "unknown";
   std::string firmware = "0.0.0";
-  std::string default_name = "Hermes Gadget";
+  std::string default_name = "Joshaico Gadget";
   std::string default_server_url;
   std::string default_access_token;
   uint32_t mic_rate = 16000;

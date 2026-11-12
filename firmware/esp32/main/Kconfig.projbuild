@@ -1,14 +1,14 @@
-menu "Hermes Gadget"
+menu "Joshaico Gadget"
 
     menu "Defaults (overridable from the serial console)"
         config HG_DEFAULT_NAME
             string "Device name"
-            default "Hermes Gadget"
+            default "Joshaico Gadget"
         config HG_DEFAULT_SERVER_URL
-            string "Hermes gadget endpoint"
+            string "Joshaico gadget endpoint"
             default ""
             help
-                ws://<hermes-host>:8765/gadget  (run 'hermes gadget info' on the host).
+                ws://<joshaico-host>:8765/gadget  (run 'joshaico gadget info' on the host).
                 Leave empty to configure it over serial: set server <url>
         config HG_DEFAULT_ACCESS_TOKEN
             string "Access token (only if GADGET_ACCESS_TOKEN is set on the host)"

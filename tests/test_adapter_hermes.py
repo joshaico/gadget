@@ -248,10 +248,10 @@ def test_agent_tools_find_the_device_behind_a_virtual_chat(monkeypatch):
     from hermes_gadget_plugin.adapter import GadgetAdapter
 
     desk, hall = types.SimpleNamespace(name="Desk"), types.SimpleNamespace(name="Hall")
-    sessions = {"hg-aaaaaaaaaaaaaaaa": desk, "hg-bbbbbbbbbbbbbbbb": hall}
+    sessions = {"jg-aaaaaaaaaaaaaaaa": desk, "jg-bbbbbbbbbbbbbbbb": hall}
     adapter = types.SimpleNamespace(hub=types.SimpleNamespace(get=sessions.get, sessions=sessions),
                                     _device_id=GadgetAdapter._device_id)
-    for chat_id in ("hg-bbbbbbbbbbbbbbbb", "hg-bbbbbbbbbbbbbbbb~ops"):
+    for chat_id in ("jg-bbbbbbbbbbbbbbbb", "jg-bbbbbbbbbbbbbbbb~ops"):
         monkeypatch.setattr(session_context, "get_session_env",
                             lambda name, default="", c=chat_id: {"HERMES_SESSION_PLATFORM": "gadget",
                                                                  "HERMES_SESSION_CHAT_ID": c}.get(name, default))
@@ -319,7 +319,7 @@ def test_images_are_converted_for_the_screen(gadget, make_sim, tmp_path):
 
 
 def test_offline_devices_report_send_failures(gadget):
-    result = gadget.run(gadget.adapter.send("hg-0000000000000000", "hello?"))
+    result = gadget.run(gadget.adapter.send("jg-0000000000000000", "hello?"))
     assert not result.success
 
 
@@ -699,12 +699,12 @@ def test_battery_log_records_paired_state_readings_only_when_enabled(loop_thread
     assert loop_thread.run(adapter.connect())
     try:
         reading = {"battery_mv": 3950, "battery_percent": 72, "charging": 0}
-        unpaired = types.SimpleNamespace(device_id="hg-0123456789abcdef", paired=False)
+        unpaired = types.SimpleNamespace(device_id="jg-0123456789abcdef", paired=False)
         loop_thread.run(adapter.on_state(unpaired, reading))
-        assert not (tmp_path / "plugin-data" / "gadget" / "battery" / "hg-0123456789abcdef.csv").exists()
-        session = types.SimpleNamespace(device_id="hg-284c3f4387c04fb8", paired=True)
+        assert not (tmp_path / "plugin-data" / "gadget" / "battery" / "jg-0123456789abcdef.csv").exists()
+        session = types.SimpleNamespace(device_id="jg-284c3f4387c04fb8", paired=True)
         loop_thread.run(adapter.on_state(session, reading))
-        log = tmp_path / "plugin-data" / "gadget" / "battery" / "hg-284c3f4387c04fb8.csv"
+        log = tmp_path / "plugin-data" / "gadget" / "battery" / "jg-284c3f4387c04fb8.csv"
         assert log.exists() == enabled
         if enabled:
             assert log.read_text().splitlines()[1].split(",")[2:5] == ["3950", "72", "0"]
@@ -717,7 +717,7 @@ def test_welcome_language_is_the_configured_one_else_hermes_language(monkeypatch
     from gateway.config import PlatformConfig
     from hermes_gadget_plugin.adapter import GadgetAdapter
 
-    session = types.SimpleNamespace(device_id="hg-0123456789abcdef")
+    session = types.SimpleNamespace(device_id="jg-0123456789abcdef")
     monkeypatch.setattr(adapter_module, "get_language", lambda: "pt-br")
 
     def language(**extra):

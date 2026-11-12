@@ -121,37 +121,37 @@ def test_wav_round_trip_through_decode(tmp_path):
 
 def test_store_persists_enrollment_and_hides_keys(tmp_path):
     store = DeviceStore(tmp_path)
-    store.enroll("hg-0123456789abcdef", b"k" * 32, name="Kitchen", board="b")
+    store.enroll("jg-0123456789abcdef", b"k" * 32, name="Kitchen", board="b")
     again = DeviceStore(tmp_path)
-    assert again.key_for("hg-0123456789abcdef") == b"k" * 32
-    listed = again.devices()["hg-0123456789abcdef"]
+    assert again.key_for("jg-0123456789abcdef") == b"k" * 32
+    listed = again.devices()["jg-0123456789abcdef"]
     assert listed["name"] == "Kitchen" and "key" not in listed
-    assert again.forget("hg-0123456789abcdef")
-    assert DeviceStore(tmp_path).key_for("hg-0123456789abcdef") is None
+    assert again.forget("jg-0123456789abcdef")
+    assert DeviceStore(tmp_path).key_for("jg-0123456789abcdef") is None
 
 
 def test_pairing_codes_expire(tmp_path):
     store = DeviceStore(tmp_path)
-    store.remember_pairing("hg-0123456789abcdef", "ABCD2345", "hermes pairing approve gadget ABCD2345", ttl_s=60)
-    assert store.pairing_for("hg-0123456789abcdef")[0] == "ABCD2345"
-    store.remember_pairing("hg-0123456789abcdef", "ABCD2345", "cmd", ttl_s=-1)
-    assert store.pairing_for("hg-0123456789abcdef") is None
+    store.remember_pairing("jg-0123456789abcdef", "ABCD2345", "hermes pairing approve gadget ABCD2345", ttl_s=60)
+    assert store.pairing_for("jg-0123456789abcdef")[0] == "ABCD2345"
+    store.remember_pairing("jg-0123456789abcdef", "ABCD2345", "cmd", ttl_s=-1)
+    assert store.pairing_for("jg-0123456789abcdef") is None
 
 
 def test_store_changes_from_another_process_are_seen(tmp_path):
     """The gateway keeps its DeviceStore open; `hermes gadget forget` edits the same file from another process."""
     gateway = DeviceStore(tmp_path)
-    gateway.enroll("hg-0123456789abcdef", b"k" * 32, name="Kitchen", board="b")
+    gateway.enroll("jg-0123456789abcdef", b"k" * 32, name="Kitchen", board="b")
 
     cli = DeviceStore(tmp_path)  # a second process: fresh instance on the same file
-    assert cli.forget("hg-0123456789abcdef")
+    assert cli.forget("jg-0123456789abcdef")
 
-    gateway.touch("hg-0123456789abcdef", firmware="0.2.0")  # the device reconnects
-    assert gateway.key_for("hg-0123456789abcdef") is None, "a forgotten key must not be resurrected by the gateway"
-    assert DeviceStore(tmp_path).key_for("hg-0123456789abcdef") is None
+    gateway.touch("jg-0123456789abcdef", firmware="0.2.0")  # the device reconnects
+    assert gateway.key_for("jg-0123456789abcdef") is None, "a forgotten key must not be resurrected by the gateway"
+    assert DeviceStore(tmp_path).key_for("jg-0123456789abcdef") is None
 
-    cli.enroll("hg-fedcba9876543210", b"j" * 32)  # and the other way round
-    assert gateway.key_for("hg-fedcba9876543210") == b"j" * 32
+    cli.enroll("jg-fedcba9876543210", b"j" * 32)  # and the other way round
+    assert gateway.key_for("jg-fedcba9876543210") == b"j" * 32
 
 
 def test_an_unapproved_device_expires_and_an_approved_one_stays(tmp_path, monkeypatch):
@@ -160,22 +160,22 @@ def test_an_unapproved_device_expires_and_an_approved_one_stays(tmp_path, monkey
     now = {"t": 1_000_000.0}
     monkeypatch.setattr(storemod.time, "time", lambda: now["t"])
     store = DeviceStore(tmp_path)
-    store.enroll("hg-0123456789abcdef", b"k" * 32, name="Stranger", address="10.0.0.9")
-    store.enroll("hg-fedcba9876543210", b"j" * 32, name="Mine")
-    store.confirm("hg-fedcba9876543210")
-    assert set(store.pending()) == {"hg-0123456789abcdef"}
-    assert store.devices()["hg-0123456789abcdef"]["pending"] is True
-    assert store.devices()["hg-fedcba9876543210"]["pending"] is False
+    store.enroll("jg-0123456789abcdef", b"k" * 32, name="Stranger", address="10.0.0.9")
+    store.enroll("jg-fedcba9876543210", b"j" * 32, name="Mine")
+    store.confirm("jg-fedcba9876543210")
+    assert set(store.pending()) == {"jg-0123456789abcdef"}
+    assert store.devices()["jg-0123456789abcdef"]["pending"] is True
+    assert store.devices()["jg-fedcba9876543210"]["pending"] is False
 
     now["t"] += storemod.PENDING_TTL_S - 1
-    store.touch("hg-0123456789abcdef")  # still in contact: the clock restarts
+    store.touch("jg-0123456789abcdef")  # still in contact: the clock restarts
     now["t"] += storemod.PENDING_TTL_S - 1
-    assert store.key_for("hg-0123456789abcdef") == b"k" * 32
+    assert store.key_for("jg-0123456789abcdef") == b"k" * 32
 
     now["t"] += 2  # no contact for a whole TTL
-    assert store.key_for("hg-0123456789abcdef") is None, "an unapproved record is gone after its TTL"
-    assert "hg-0123456789abcdef" not in store.devices()
-    assert store.key_for("hg-fedcba9876543210") == b"j" * 32, "an approved record stays"
+    assert store.key_for("jg-0123456789abcdef") is None, "an unapproved record is gone after its TTL"
+    assert "jg-0123456789abcdef" not in store.devices()
+    assert store.key_for("jg-fedcba9876543210") == b"j" * 32, "an approved record stays"
 
 
 def test_battery_log_writes_a_row_per_interval_and_at_once_on_a_power_change(tmp_path):
@@ -186,15 +186,15 @@ def test_battery_log_writes_a_row_per_interval_and_at_once_on_a_power_change(tmp
     now = [1_700_000_000.0]
     log = BatteryLog(tmp_path, clock=lambda: now[0], interval_s=30)
     reading = {"battery_mv": 3950, "battery_percent": 72, "charging": 0, "external_power": 0, "battery_present": 1}
-    assert log.record("hg-1/../x", reading) == tmp_path / "hg-1_.._x.csv"  # the id cannot leave the directory
+    assert log.record("jg-1/../x", reading) == tmp_path / "jg-1_.._x.csv"  # the id cannot leave the directory
     now[0] += 10
-    assert log.record("hg-1/../x", {**reading, "battery_mv": 3949}) is None  # not due yet
+    assert log.record("jg-1/../x", {**reading, "battery_mv": 3949}) is None  # not due yet
     now[0] += 5
-    assert log.record("hg-1/../x", {**reading, "charging": 1, "external_power": 1}) is not None  # USB plugged in
+    assert log.record("jg-1/../x", {**reading, "charging": 1, "external_power": 1}) is not None  # USB plugged in
     now[0] += 30
-    assert log.record("hg-1/../x", {**reading, "battery_mv": 3990, "charging": 1, "external_power": 1}) is not None
-    assert log.record("hg-1/../x", {"temperature": 21}) is None  # no battery reading: nothing to log
-    rows = list(csv.DictReader((tmp_path / "hg-1_.._x.csv").open()))
+    assert log.record("jg-1/../x", {**reading, "battery_mv": 3990, "charging": 1, "external_power": 1}) is not None
+    assert log.record("jg-1/../x", {"temperature": 21}) is None  # no battery reading: nothing to log
+    rows = list(csv.DictReader((tmp_path / "jg-1_.._x.csv").open()))
     assert [r["battery_mv"] for r in rows] == ["3950", "3950", "3990"]
     assert [r["charging"] for r in rows] == ["0", "1", "1"]
     assert rows[0]["unix_s"] == "1700000000" and rows[0]["battery_percent"] == "72"
@@ -207,14 +207,14 @@ def test_battery_log_rolls_over_a_full_file(tmp_path):
     log = BatteryLog(tmp_path, clock=lambda: now[0], interval_s=1, max_bytes=200)
     for i in range(20):
         now[0] += 1
-        log.record("hg-1", {"battery_mv": 4000 - i})
-    assert (tmp_path / "hg-1.1.csv").exists()
-    assert (tmp_path / "hg-1.csv").stat().st_size < 400
-    assert (tmp_path / "hg-1.csv").read_text().startswith("time,unix_s,battery_mv")
+        log.record("jg-1", {"battery_mv": 4000 - i})
+    assert (tmp_path / "jg-1.1.csv").exists()
+    assert (tmp_path / "jg-1.csv").stat().st_size < 400
+    assert (tmp_path / "jg-1.csv").read_text().startswith("time,unix_s,battery_mv")
 
 
 def test_owner_binding_survives_forget_from_a_stale_store(tmp_path):
-    device = "hg-0123456789abcdef"
+    device = "jg-0123456789abcdef"
     gateway = DeviceStore(tmp_path)
     gateway.enroll(device, b"k" * 32)
     cli = DeviceStore(tmp_path)  # another process
@@ -232,7 +232,7 @@ class _FakeDevice:
     """The slice of DeviceSession the hub's audio path touches; records what it would send."""
 
     name = "Desk"
-    device_id = "hg-0000000000000000"
+    device_id = "jg-0000000000000000"
 
     def __init__(self, caps=None):
         self.caps = caps if caps is not None else {}
@@ -341,7 +341,7 @@ def _slow_face_session(tmp_path, hub=None):
 
     delegate, wire = SlowDefault(), _Wire()
     hub = hub or DeviceHub(DeviceStore(tmp_path), delegate)
-    session = DeviceSession(hub, wire, {"device_id": "hg-1", "caps": {"faces": 1}})
+    session = DeviceSession(hub, wire, {"device_id": "jg-1", "caps": {"faces": 1}})
     session.paired = True
     hub.sessions[session.device_id] = session
     return session, hub.delegate, wire
@@ -481,7 +481,7 @@ class _MediaWire(_Wire):
 def test_a_device_says_whether_it_draws_faces_and_at_what_size(faces, px):
     from hermes_gadget_plugin.hub import DeviceSession
 
-    session = DeviceSession(None, _Wire(), {"device_id": "hg-1", "caps": {"faces": faces}})
+    session = DeviceSession(None, _Wire(), {"device_id": "jg-1", "caps": {"faces": faces}})
     assert session.face_px == px
     assert session.shows_faces() == (faces == 1 or px > 0)
 
@@ -501,7 +501,7 @@ def test_a_colour_face_goes_as_face_start_chunks_and_face_end(tmp_path):
     async def main():
         wire = _MediaWire()
         hub = DeviceHub(DeviceStore(tmp_path), Colour())
-        session = DeviceSession(hub, wire, {"device_id": "hg-1", "caps": {"faces": {"v": 2, "px": 64}}})
+        session = DeviceSession(hub, wire, {"device_id": "jg-1", "caps": {"faces": {"v": 2, "px": 64}}})
         session.paired = True
         session.face_hash = "an older face"
         hub.sessions[session.device_id] = session
@@ -525,7 +525,7 @@ def test_a_colour_face_goes_as_face_start_chunks_and_face_end(tmp_path):
 def test_a_device_says_whether_it_draws_blink_and_talk_frames(faces, frames):
     from hermes_gadget_plugin.hub import DeviceSession
 
-    assert DeviceSession(None, _Wire(), {"device_id": "hg-1", "caps": {"faces": faces}}).face_frames is frames
+    assert DeviceSession(None, _Wire(), {"device_id": "jg-1", "caps": {"faces": faces}}).face_frames is frames
 
 
 def test_a_moving_colour_face_names_its_bands_and_sends_them_after_the_idle_picture(tmp_path):
@@ -544,7 +544,7 @@ def test_a_moving_colour_face_names_its_bands_and_sends_them_after_the_idle_pict
     async def main():
         wire = _MediaWire()
         hub = DeviceHub(DeviceStore(tmp_path), Colour())
-        session = DeviceSession(hub, wire, {"device_id": "hg-1",
+        session = DeviceSession(hub, wire, {"device_id": "jg-1",
                                             "caps": {"faces": {"v": 2, "px": 64, "frames": True}}})
         session.paired = True
         hub.sessions[session.device_id] = session
@@ -580,7 +580,7 @@ def test_a_colour_face_cut_off_mid_send_is_cleared_when_the_profile_has_none(tmp
     async def main():
         wire = HeldWire()
         hub = DeviceHub(DeviceStore(tmp_path), HubDelegate())
-        session = DeviceSession(hub, wire, {"device_id": "hg-1", "caps": {"faces": {"v": 2, "px": 64}}})
+        session = DeviceSession(hub, wire, {"device_id": "jg-1", "caps": {"faces": {"v": 2, "px": 64}}})
         session.paired = True
         session.face_hash = "already-on-device"
         hub.sessions[session.device_id] = session

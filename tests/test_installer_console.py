@@ -54,7 +54,7 @@ def test_installer_settings_reach_the_core_intact(make_sim, tmp_path):
     board.join(timeout=5)
 
     report = json.loads(result.read_text(encoding="utf-8"))
-    assert report["before"]["device_id"].startswith("hg-")
+    assert report["before"]["device_id"].startswith("jg-")
     assert (report["after"]["server"], report["after"]["name"]) == (SETTINGS["server"], SETTINGS["name"])
     for key in ("wifi_ssid", "server", "name"):
         assert json.loads(sim.console(f"get {key}")[len("@value "):])["value"] == SETTINGS[key]

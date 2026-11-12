@@ -7,7 +7,7 @@ const clock = (t) => `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSec
 
 /** The file's text: where and when it was taken, the report, then the board's recent log. */
 export function reportText({ report, log }, when = new Date()) {
-  return `Hermes Gadget diagnostics from the browser installer, ${day(when)} ${clock(when)}\n\n`
+  return `Joshaico Gadget diagnostics from the browser installer, ${day(when)} ${clock(when)}\n\n`
     + `== report ==\n${JSON.stringify(report, null, 2)}\n\n== recent log ==\n${log.join("\n")}\n`;
 }
 

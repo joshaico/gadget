@@ -1,10 +1,10 @@
-// The virtual gadget: a Hermes Gadget device that lives in the Desktop page. It speaks the same
+// The virtual gadget: a Joshaico Gadget device that lives in the Desktop page. It speaks the same
 // protocol as the firmware (docs/protocol.md): hello, challenge, auth with its own key, pairing,
 // typed and spoken messages, streamed replies, spoken audio, cards, questions and actions. It knows
 // nothing about React; the page renders its state and feeds it input.
 
-export const SUBPROTOCOL = 'hermes-gadget.v1'
-const AUTH_CONTEXT = 'hermes-gadget/v1|'
+export const SUBPROTOCOL = 'joshaico-gadget.v2'
+const AUTH_CONTEXT = 'joshaico-gadget/v2|'
 const CH_AUDIO = 0x01
 const CH_IMAGE = 0x02
 export const MIC_RATE = 16000
@@ -21,13 +21,13 @@ export function newKey(cryptoImpl = globalThis.crypto) {
   return b64(cryptoImpl.getRandomValues(new Uint8Array(32)))
 }
 
-/** device_id = "hg-" + hex(sha256(key))[0:16], as the firmware derives it. */
+/** device_id = "jg-" + hex(sha256(key))[0:16], as the firmware derives it. */
 export async function deviceIdFor(keyB64, subtle = globalThis.crypto.subtle) {
   const digest = new Uint8Array(await subtle.digest('SHA-256', unb64(keyB64)))
-  return 'hg-' + hex(digest).slice(0, 16)
+  return 'jg-' + hex(digest).slice(0, 16)
 }
 
-/** HMAC-SHA256(key, "hermes-gadget/v1|" + id + "|" + nonce), base64: the auth answer. */
+/** HMAC-SHA256(key, "joshaico-gadget/v2|" + id + "|" + nonce), base64: the auth answer. */
 export async function authMac(keyB64, deviceId, nonce, subtle = globalThis.crypto.subtle) {
   const key = await subtle.importKey('raw', unb64(keyB64), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   const sig = await subtle.sign('HMAC', key, new TextEncoder().encode(`${AUTH_CONTEXT}${deviceId}|${nonce}`))
@@ -135,10 +135,10 @@ export function createDevice(opts) {
     ws.onopen = () => {
       send({
         type: 'hello',
-        proto: 1,
+        proto: 2,
         device_id: deviceId,
         name: opts.name ?? 'Desktop Gadget',
-        board: 'hermes-desktop',
+        board: 'joshaico-desktop',
         firmware: opts.version ?? '0.5.0',
         ...(opts.token ? { token: opts.token } : {}),
         caps: {
@@ -171,7 +171,7 @@ export function createDevice(opts) {
         retry = setTimeout(connect, 4000)
       }
     }
-    ws.onerror = () => set({ error: state.error ?? "Can't reach the Gadget platform on this Hermes." })
+    ws.onerror = () => set({ error: state.error ?? "Can't reach the Gadget platform on this Joshaico." })
   }
 
   async function handle(msg) {
@@ -187,7 +187,7 @@ export function createDevice(opts) {
         set({ paired: false, pairingCode: String(msg.code ?? '') })
         break
       case 'paired':
-        set({ paired: true, pairingCode: null, notice: { text: 'Paired with Hermes', until: now() + 4000 } })
+        set({ paired: true, pairingCode: null, notice: { text: 'Paired with Joshaico', until: now() + 4000 } })
         break
       case 'unpaired':
         set({ paired: false })

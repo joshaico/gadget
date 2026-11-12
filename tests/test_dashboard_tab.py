@@ -22,8 +22,8 @@ from hermes_gadget_plugin import status as live_status
 from hermes_gadget_plugin.store import DeviceStore
 
 DASHBOARD = REPO / "plugin" / "dashboard"
-DEVICE = "hg-0123456789abcdef"
-OTHER = "hg-284c3f4387c04fb8"
+DEVICE = "jg-0123456789abcdef"
+OTHER = "jg-284c3f4387c04fb8"
 
 
 # -- the status file ------------------------------------------------------------------------
