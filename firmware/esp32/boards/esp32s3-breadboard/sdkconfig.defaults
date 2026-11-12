@@ -1,0 +1,24 @@
+# ESP32-S3-DevKitC-1 (N8R8: 8 MB flash, 8 MB octal PSRAM) on a breadboard with:
+#   ST7789 240x320 SPI LCD, INMP441 I2S microphone, MAX98357A I2S amplifier.
+# Wiring: docs/hardware.md#esp32-s3-breadboard
+CONFIG_IDF_TARGET="esp32s3"
+# Flash size stays at the base 4 MB: partitions.csv fits it, so one image runs on
+# 4, 8 and 16 MB modules alike.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+# Framebuffer and audio buffers go to PSRAM.
+CONFIG_SPIRAM_USE_MALLOC=y
+# Without the expected PSRAM (an N8R2 or N8 module), start anyway and say so in the
+# log and in `diag`, rather than restart in a loop.
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_HG_BOARD_ESP32S3_BREADBOARD=y
+
+# TCP windows for links with a long round trip (a phone hotspot): 5,760 B capped
+# a connection near 33 KB/s at 175 ms, below 24 kHz audio's 48 KB/s.
+# Wi-Fi and lwIP buffers in PSRAM first, internal RAM when the module has none.
+# docs/porting.md#network-buffers
+CONFIG_LWIP_TCP_WND_DEFAULT=32768
+CONFIG_LWIP_TCP_SND_BUF_DEFAULT=32768
+CONFIG_LWIP_TCP_RECVMBOX_SIZE=32
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y

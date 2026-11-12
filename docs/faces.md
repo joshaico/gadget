@@ -1,0 +1,330 @@
+# Faces
+
+The device draws a face on its screen: three 1-bit frames, idle, blink and talk, at 64, 96,
+144 and 192 px. Each Hermes profile can have a face of its own, which Hermes sends to the device
+with no firmware build; see [A face for each Hermes profile](#a-face-for-each-hermes-profile).
+Without one, the device shows **the face built into the firmware**: the Hermes Agent mascot.
+Changing that built-in face means building your own firmware image. Once built, `hermes gadget
+update` can install that image over the air. Release firmware, whether from
+`hermes gadget update --latest` or the browser installer, carries the default face, so a
+custom face comes back by rebuilding it.
+
+The generator is `hermes-gadget face`. It replaces the old `tools/gen_mascot.py`, and with no
+arguments it regenerates the mascot, byte for byte, from the project's own artwork.
+
+Artwork in this repository, in examples and in tests is original artwork. A picture of a real
+person belongs on your own device and nowhere else, and this project is independent of Nous
+Research, so nothing here should look like an endorsement of one.
+
+## What a drawing has to be
+
+The screen is one bit deep: a pixel is ink or it is nothing. Whatever you feed the command
+gets reduced to that, so the art has to survive the reduction:
+
+- **Flat two-tone works.** Shading, gradients and photographic detail turn to mud, because
+  everything between black and white has to go one way or the other.
+- **Silhouette plus one distinguishing feature survives.** At 64 px a hair shape, a pair of
+  headphones, glasses or a cap read. A likeness does not.
+- **The head should fill the frame.** A face that is 6% of the frame gives an eye about 11 px
+  wide on a 240x240 screen, and a blink on an 11 px eye is invisible. Cropping tighter is the
+  biggest single improvement you can make.
+- **Both eyes have to be drawn.** An eye in shadow, behind a visor or under a mask leaves the
+  blink with nothing to close, and the blink has to be invented.
+
+## Ask an image generator for this
+
+```
+Square 1:1 image, at least 1024x1024. A bold two-tone stencil portrait of [SUBJECT], head
+and shoulders filling the frame, facing the camera or in three-quarter view. Pure black
+background, the subject drawn in pure white only. Flat shapes, thick clean edges, no grey,
+no gradients, no shading, no background detail, no text, no watermark, no border. Both eyes
+clearly visible as light shapes, and the mouth visible.
+```
+
+Image generators hand back flat files, usually JPEG, so there is no transparency in them.
+That is what `--mask` is for. Asking for a square image saves you a crop.
+
+## Generating a face
+
+```
+hermes-gadget face my-face.png --mask bright --report
+```
+
+Three things come out of it:
+
+| Output | What it is |
+|---|---|
+| `firmware/core/src/mascot_data.cpp` | The frames, ready to build. `--out` puts them elsewhere. |
+| `build/face-preview.png` | The three frames at all four sizes, on the device's background |
+| `build/face-check.png` | Your art with the eye boxes, lid lines, mouth and effect anchors on it |
+
+**Look at the check image first.** It is the only way to see whether the marks landed on the
+features before spending a flash.
+
+The project's own mascot is the worked example on this page: `hermes-gadget face` with no picture
+regenerates it, and every number in the tables below is hers. Running the picker on
+`assets/mascot/nous-girl-white-1024.png` puts the marks on art whose answers are already known,
+which is the quickest way to see what they do.
+
+`--mask` says where the ink is in your picture:
+
+| Value | Meaning |
+|---|---|
+| `alpha` | The picture carries its own transparency |
+| `bright` | Ink is the light part: white art on a dark background |
+| `dark` | Ink is the dark part: black art on a light background |
+
+Generated images and screenshots need `bright` or `dark`. With none of them you get one solid
+block, and the command says so rather than writing it.
+
+Then build and flash as in [hardware.md](hardware.md), or install your build over the air from
+the Hermes computer:
+
+```
+hermes gadget update "Kitchen" firmware/esp32/.pio/build/<board>/firmware.bin
+```
+
+Either way the device keeps its settings, so it stays paired and keeps its Wi-Fi, its volume
+and its device key.
+
+**Updates bring back the default face.** `hermes gadget update --latest` and the browser
+installer install release firmware, which carries the shipped mascot. To keep your face on a
+newer release, build that release with your `mascot_data.cpp` and install the build as above.
+
+## A face for each Hermes profile
+
+Write the face into the profile's folder instead of the firmware:
+
+```
+hermes-gadget face my-face.png --mask bright --out ~/.hermes/profiles/ops/gadget-face.bin
+```
+
+A `.bin` name makes the command write a face file. The default profile's folder is the Hermes
+home itself (`~/.hermes/gadget-face.bin`). The Hermes plugin sends the face of the profile that
+answers a device when the device connects and when it switches profile, so the face changes with
+the profile, and a firmware update keeps it. Devices whose firmware predates faces keep the
+mascot, and so do boards without PSRAM, which have no room for a second face.
+
+A profile without a face file shows its Hermes avatar (`assets/avatar.png`, `.jpg` or `.webp` in
+the profile's folder), made into a still face: the light parts of a picture on a dark background,
+or the dark parts of one on a light background, cut at the picture's own average brightness;
+transparency counts as a dark background. A drawing in one colour on transparency has no parts on
+either side of that cut, so its visible pixels are the shape instead. One colour means its fully
+opaque pixels differ by at most 16 brightness levels, so shades that close stay one whole body.
+
+On a board with PSRAM, the avatar shows in colour instead, as a still picture at the largest size the
+Ready screen draws the face at (at most 192 px on today's screens). Where a screen has less room, as Ready
+has while the device offers profiles to switch between, the device scales the picture down by dropping
+rows and columns, which looks rougher than the picture itself. A picture without transparency is cropped to a
+square from its middle. A picture with transparency is shown whole, and the screen's background shows
+through it: its pixels more than half transparent are left out, so its edge is hard, and its softened
+edge pixels are laid on black, which can leave a dark rim a pixel wide where the background is not
+black: an LCD's dark blue-grey, or the timer alarm's green flash.
+The listening waves and the thinking dots draw over the colour face where they would on a one-colour face
+made from the same outline. On the resting clock it moves a few pixels each minute and dims with the clock,
+like the mascot. Firmware from before colour faces, and boards without PSRAM, keep the one-colour face. A
+face file still wins over the avatar, in one colour. Colour faces need the plugin and firmware from the
+same release: an older plugin sends colour firmware no face at all, so it shows the mascot.
+
+A colour face blinks and talks when the avatar has a blink and a talk picture next to it:
+`assets/avatar-blink.png`, the avatar with its eyes closed, and `assets/avatar-talk.png`, with its mouth
+open (`.jpg` or `.webp` too, each found on its own). Draw each from the avatar with only the eyes or the
+mouth changed, and save it the way the avatar is saved: the plugin fits it like the avatar and sends only
+the rows where it differs from the avatar, by more than 16 levels in a colour or in whether it is
+transparent. Compression noise, as in a JPEG frame next to a PNG avatar, can widen those rows. The two
+frames share half the face's rows (72 at 144 px, 96 at 192): the rows from the first to the last that a
+frame changes count, whatever lies between them. A frame that needs more, two that need more together, or
+a file that cannot be read or is not a picture leaves the whole face still, and the log says so once for
+each file, for example:
+`/home/me/.hermes/assets/avatar-blink.png differs from avatar.png in 131 of 144 rows, more than the 72 the
+device has room for; draw it from the same picture with only the eyes changed`. A face with only one of the
+pictures keeps the other frame still. The colour face blinks and talks at the mascot's pace: a
+200 ms blink about every 4.5 s, and while it speaks the mouth opens and shuts every 200 ms. It stays still
+on the resting clock and the alarm. A board with room for the picture but not for the frames keeps a still
+colour face.
+
+Some drawings on transparency come out poorly in one colour; for those, make a face file:
+
+- A dark drawing with light eyes and mouth keeps only the eyes and mouth.
+- A drawing in two shades more than 16 levels apart keeps only the lighter shade.
+- A flat icon whose opaque pixels still vary by more than 16 levels, such as a yellow icon that
+  was antialiased by scaling it down, can come out blank.
+- Eyes or a mouth drawn semi-transparent on a one-colour body don't count as parts, so they are
+  filled in. Draw them fully opaque.
+
+A still face does not blink or move its mouth; the waves and dots still show. For a face that
+blinks and talks, add the blink and talk pictures on a colour board, or make a face file. Converting
+an avatar needs Pillow on the Hermes host; without it, the plugin uses face files only and says so
+once in the log.
+
+Which profile's face shows depends on how the device reaches that profile:
+
+- **The default profile:** once the device is paired, as for everything else.
+- **A profile the device switched to:** once the default profile trusts the device, the same gate
+  switching itself uses. The face shows while the device still displays that profile's
+  `hermes -p ops pairing approve gadget <code>` command, so you can see whom you picked. Revoking the
+  device in the default profile brings the mascot back.
+- **A profile a gadget route sends the device to:** once that profile accepts the device (its own
+  pairing approval or the gateway's allowlist). The face follows within a few seconds of the approval,
+  and the mascot comes back once that profile no longer accepts the device.
+
+A profile with neither a face file nor an avatar shows the mascot. To show the mascot for every
+profile, turn faces off in the default profile's `config.yaml`:
+
+```yaml
+platforms:
+  gadget:
+    extra:
+      profile_faces: false
+```
+
+The device keeps the face in memory, so it shows the mascot after a restart until it reconnects.
+An unchanged face stays through reconnects and gateway restarts. When you switch profiles, or a
+gadget route sends the device to another profile, it shows the mascot until the new profile's face
+arrives.
+
+A face is known by the files it comes from, not by the picture it makes. Any change to one of them,
+even one that draws the same face (a metadata edit in the avatar, or the avatar replaced by a face
+file made from it), sends the face once more. A device that reconnects after such a change shows
+the mascot for a moment, until the face arrives.
+
+A connected device follows those files without a reconnect. Every 2 seconds the plugin compares
+the size and modification time of the profile's face file, avatars, and blink and talk pictures with
+what its last lookup saw. When they have changed and then stay the same on two checks in a row, the
+plugin looks the face up again; if the files change again before or while it reads them, the device
+keeps its face and the files have to settle once more. The new face arrives about 2 to 4 seconds after
+the save.
+A one-colour face replaces the old one directly, with no mascot in between; for a colour face the
+mascot shows while its pixels arrive. When no source is left, the device gets the mascot. Two
+unchanged checks only debounce a write: a writer that pauses longer than that can be read before it
+has finished. A face with the hash the device already holds is not sent, so touching
+a file or saving the same picture again changes nothing. A file replaced by one of the same size
+and modification time, as a copy that keeps its timestamp can be, goes unnoticed until the device
+reconnects or switches profile.
+
+### Thumbnails in the profile grid
+
+On a touchscreen board with PSRAM, the [profile grid](using-gadget.md#device-settings-and-hardware-checks)
+shows each offered profile with a small picture of its face instead of its initial: the idle
+picture of its `gadget-face.bin`, in the colour the device draws one-colour faces in, or else its
+Hermes avatar in colour. A profile with neither keeps its initial, and so does every profile on a
+board without PSRAM. The current profile shows the face the device holds for it.
+
+The thumbnails follow the files the same way: every 2 seconds the plugin compares each offered
+profile's face file and avatars with what it last read, and reads them again once they have
+changed and then stayed the same on two checks in a row. Only the thumbnail that changed is sent;
+the device keeps the others, and keeps them all through a reconnect, so nothing unchanged is sent
+again. Removing a profile's face file and avatar brings its initial back. A picture that cannot be read keeps what
+the device shows, and is tried again only once the files change. A profile parked or taken off the offer
+since the device connected is not looked at again.
+
+## Placing the eye and the mouth
+
+The device blinks and talks, so the generator has to know where the face's features are. It
+starts from the drawing's own outline and works in fractions of it, so the numbers travel
+between images:
+
+| Flag | Meaning | Default |
+|---|---|---|
+| `--face-x` | Horizontal centre of the face | 0.50 |
+| `--eye-line` | Height of the eye centres | 0.40 |
+| `--eye-span` | Distance between eye centres | 0.22 |
+| `--eye-size` | Eye radius | 0.05 |
+| `--eye-ratio` | Eye height against its width | 0.60 |
+| `--mouth-x`, `--mouth-y` | Mouth centre | face x, 0.62 |
+| `--mouth-w`, `--mouth-h` | Mouth size | 0.10, 0.045 |
+| `--ear-cup` | Where the listening waves start | 0.62 0.30 |
+| `--think-dot` | Where the thinking dots go | 0.82 0.11 |
+
+A centred portrait needs nothing but the picture. These four cases need more:
+
+- **A face that is off centre**, because the drawing's outline includes hair or shoulders:
+  move `--face-x`, and `--mouth-x` if the mouth is not under the eyes.
+- **A three-quarter view where the two eyes differ**, for example a far eye half the width of
+  the near one: give each eye its own box. The four numbers are centre x, centre y, width and
+  height, as fractions of the outline, and both eyes must be given or neither:
+
+  ```
+  --eye-left  0.2197 0.4602 0.0482 0.0746
+  --eye-right 0.3826 0.4349 0.1404 0.0835
+  ```
+
+  Those are the mascot's own eyes, whose far one is a third the width of the near one and sits
+  lower. They are what `hermes-gadget face` uses with no arguments.
+- **An eye drawn as shadow or a mask**: `--blink dark` darkens the eye and draws the lid as a
+  light line. The default, `--blink light`, covers a light eye and cuts the lid out of the
+  cover, which on a dark socket reads as a white blob over the face.
+- **An eye that is small in the frame**: `--eye-grow` scales the blink patch about the centre
+  you placed, so the blink is still visible at 64 px. Raise it until `--report` puts you in
+  the same range as the shipped mascot.
+
+A logo or an object, with nothing to blink, can be generated as a still picture with
+`--plain`.
+
+Crop before you measure, not after: `--crop X0 Y0 X1 Y1` trims the source first, which moves
+the outline and therefore every fraction above.
+
+### Clicking the features instead of measuring them
+
+When the numbers are hard to guess, the window takes them off the picture:
+
+```
+hermes-gadget face my-face.png --mask bright --pick
+```
+
+It opens as the device sees it, with the marks the current numbers would draw on it. Click the
+centre of the near eye, then the far eye, then the mouth; press Return to leave the listening
+waves and the thinking dots where the geometry put them. A click moves that mark and keeps the
+size the measurement found, so a click only has to land on the feature. The window prints the
+flag line for a real run, and shows it in the window to copy:
+
+```
+hermes-gadget face my-face.png --mask bright --eye-left 0.2197 0.4602 0.0482 0.0746 ...
+```
+
+R starts over, Q closes the window. `--pick` writes nothing, so a mis-click cannot touch the
+artwork. It needs Tk, the same dependency the simulator window has.
+
+The copied command uses the full image path and keeps the crop, threshold, blink mode, and
+anchor positions shown in the picker. Enlarged eye and mouth sizes are already included in
+the coordinates; do not add the growth flags again. On Windows, paste the command into
+PowerShell. On macOS and Linux, use a POSIX shell such as Bash or Zsh. Add `--out`, `--preview`,
+or `--check` to choose output files before running it.
+
+With the project's mascot image, explicit feature coordinates generate your selected geometry.
+Run `hermes-gadget face --mascot` to reproduce the original shipped frames.
+
+## Will the blink read?
+
+```
+hermes-gadget face my-face.png --mask bright --report
+```
+
+`--report` prints how many bits each frame changes against idle, per size. The number that
+decides it is the 192 px one, because that is the largest the face is drawn on a 240x240
+screen. The shipped mascot changes **226 bits at 192 px** on a blink and 16 on talk, and the
+test suite asserts those two numbers. Anything in that range reads on the screen; much less
+and the blink is a flicker nobody notices.
+
+## Putting the mascot back
+
+```
+git checkout -- firmware/core/src/mascot_data.cpp
+```
+
+Then build and flash. The shipped artwork is the default, and the generator reproduces it
+exactly, so there is nothing to keep in sync.
+
+## How it works
+
+The frames are 1-bit bitmaps: row major, most significant bit first, rows padded to a whole
+byte, a set bit meaning ink. Four sizes exist so the UI can pick the largest one that fits the
+space it has, and three frames exist so the face can blink and talk. Between them they take
+about 27 KB of flash. See [architecture.md](architecture.md) for where they are drawn.
+
+The blink and talk frames are drawn on top of the idle frame: a blink covers each eye and cuts
+a closed lid into it, and a talking mouth is a hole cut into the ink. Both come from the
+feature positions above, which is why those positions matter.
+
+The effect anchors are written as thousandths of the drawn size, which is how `ui.cpp` reads
+them, so the waves and dots land where the artwork puts them.

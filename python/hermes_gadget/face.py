@@ -1,0 +1,623 @@
+"""The face the device draws, and how to make one from a picture.
+
+The firmware draws three frames, idle, blink and talk, at 64, 96, 144 and 192 px.
+They ship as the Hermes Agent mascot, generated into
+`firmware/core/src/mascot_data.cpp`.
+
+Two profiles:
+
+* **the mascot**, the default. The project's own artwork and feature positions,
+  reproducing the committed file exactly. This is what `tools/gen_mascot.py`
+  did before there was one generator.
+* **a picture of your own.** Any drawing, where the eye and mouth positions come
+  either from fractions of the drawing's outline or from measurements of it.
+
+Both write the same kind of 1-bit bitmap, and both offer the same three pictures
+for looking at before flashing anything: a contact sheet of the frames, a
+geometry check drawn on the artwork, and a count of how many bits each frame
+changes, which is what decides whether a blink reads on a 240x240 screen.
+
+Pillow is needed, and lives behind the `images` extra.
+"""
+
+from __future__ import annotations
+
+import os
+import shlex
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont
+
+from hermes_gadget_plugin.face import (  # shared with the plugin, which sends faces to devices
+    FRAMES, MASTER_SIZE, SIZES, THRESHOLD, Options, ink_box, measure, pack, thousandths, to_bits)
+
+from .paths import repo_root
+
+REPO = repo_root()
+MASTER = REPO / "assets" / "mascot" / "nous-girl-white-1024.png"
+OUT_DEFAULT = REPO / "firmware" / "core" / "src" / "mascot_data.cpp"
+
+BG = (10, 14, 20)  # the device's background, for the pictures we write
+LID_DROP = 0.10    # where a closed lid sits inside the eye
+LID_WIDTH = 0.20   # lid stroke, as a fraction of the eye's half width
+LID_SAG = 0.35     # how far the lid dips in the middle
+
+# The mascot's feature geometry, in master pixels. The eye and lid shapes are
+# polygons because the artwork's eyes are, which is what makes this reproduce
+# the shipped file.
+MASCOT = {
+    "right_eye": [(318, 418), (452, 410), (462, 470), (444, 498), (326, 496), (314, 458)],
+    "right_lid": [(326, 452), (350, 466), (388, 474), (424, 468), (452, 452)],
+    "left_eye": [(213, 446), (254, 444), (257, 516), (215, 518)],
+    "left_lid": [(215, 484), (233, 490), (254, 484)],
+    "mouth_open": (246, 622, 292, 648),
+    "ear_cup": (622, 300),
+    "mouth": (268, 635),
+    "think_dot": (820, 110),
+    "eyes_rows": (405, 520),
+    "mouth_rows": (600, 665),
+}
+
+
+def load_master(path: Path, size: int = MASTER_SIZE, mask: str = "alpha",
+                threshold: int = THRESHOLD, crop: tuple[int, int, int, int] | None = None):
+    """Open a picture as a square RGBA canvas whose alpha channel is the ink.
+
+    alpha   the picture carries its own transparency
+    bright  ink is the light part: white art on a dark background
+    dark    ink is the dark part: black art on a light background
+
+    Anything from an image generator or a screenshot has no transparency, so it
+    needs bright or dark. With alpha and no transparency, say so rather than
+    writing a solid block.
+    """
+    src = Image.open(path)
+    if mask == "alpha":
+        art = src.convert("RGBA")
+        low, high = art.getchannel("A").getextrema()
+        if low == high:
+            raise SystemExit(
+                f"{path.name} has no transparency. Use --mask bright for light art on a dark "
+                f"background, or --mask dark for dark art on a light one.")
+    elif mask in ("bright", "dark"):
+        lum = src.convert("L")
+        keep = (lambda v: v > threshold) if mask == "bright" else (lambda v: v < threshold)
+        ink = lum.point(lambda v: 255 if keep(v) else 0)
+        art = Image.merge("RGBA", (Image.new("L", lum.size, 255),) * 3 + (ink,))
+    else:
+        raise SystemExit(f"unknown mask mode {mask!r}")
+
+    if crop:
+        art = art.crop(tuple(crop))
+    if art.size == (size, size):
+        return art
+    scale = min(size / art.width, size / art.height)
+    fitted = art.resize((max(1, round(art.width * scale)), max(1, round(art.height * scale))),
+                        Image.LANCZOS)
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    canvas.paste(fitted, ((size - fitted.width) // 2, (size - fitted.height) // 2), fitted)
+    return canvas
+
+
+# -- the mascot profile ---------------------------------------------------------------------------------
+
+def mascot_frames(master):
+    """The frames that ship, drawn the way the artwork's own features are."""
+    alpha = master.getchannel("A")
+
+    blink = alpha.copy()
+    draw = ImageDraw.Draw(blink)
+    draw.polygon(MASCOT["right_eye"], fill=255)  # skin over the open eye
+    draw.polygon(MASCOT["left_eye"], fill=255)
+    draw.line(MASCOT["right_lid"], fill=0, width=14, joint="curve")  # then the closed lids
+    draw.line(MASCOT["left_lid"], fill=0, width=12, joint="curve")
+
+    talk = alpha.copy()
+    ImageDraw.Draw(talk).ellipse(MASCOT["mouth_open"], fill=0)  # open mouth, cut out of the ink
+    return {"idle": alpha, "blink": blink, "talk": talk}
+
+
+def mascot_anchors() -> dict:
+    """Effect anchors for the mascot, in master pixels."""
+    return {"ear_cup": MASCOT["ear_cup"], "mouth_pt": MASCOT["mouth"], "think_dot": MASCOT["think_dot"],
+            "eyes_rows": MASCOT["eyes_rows"], "mouth_rows": MASCOT["mouth_rows"]}
+
+
+# -- a picture of your own ------------------------------------------------------------------------------
+
+def lid_cy(box) -> float:
+    """Where a closed lid sits: just below the middle of that eye."""
+    ry = (box[3] - box[1]) / 2
+    return (box[1] + box[3]) / 2 + ry * LID_DROP
+
+
+def lid_width(box) -> int:
+    return max(2, round((box[2] - box[0]) / 2 * LID_WIDTH))
+
+
+def generic_frames(alpha, geo: dict, blink_dark: bool = False):
+    """The frames for a drawing of your own.
+
+    A light eye is covered and the lid cut out of the cover; a dark eye, which is
+    what shadow or a mask looks like, is darkened and the lid drawn as a light
+    line instead.
+    """
+    blink = alpha.copy()
+    draw = ImageDraw.Draw(blink)
+    for side in ("left", "right"):
+        x0, y0, x1, y1 = geo[side]
+        cy = lid_cy(geo[side])
+        sag = (y1 - y0) / 2 * LID_SAG
+        if blink_dark:
+            draw.ellipse((x0, y0, x1, y1), fill=0)
+            draw.line((x0, cy, (x0 + x1) / 2, cy + sag, x1, cy), fill=255,
+                      width=max(2, lid_width(geo[side]) // 2), joint="curve")
+        else:
+            draw.ellipse((x0, y0, x1, y1), fill=255)
+            draw.line((x0, cy, (x0 + x1) / 2, cy + sag, x1, cy), fill=0,
+                      width=lid_width(geo[side]), joint="curve")
+
+    talk = alpha.copy()
+    ImageDraw.Draw(talk).ellipse(geo["mouth"], fill=0)  # the mouth opens as a hole in the ink
+    return {"idle": alpha, "blink": blink, "talk": talk}
+
+
+# -- the file itself ------------------------------------------------------------------------------------
+
+def emit(frames, anchors: dict, source: str, threshold: int = THRESHOLD) -> str:
+    """The C++ source for a face. `source` is how the header describes where it came from."""
+    lines = [
+        f"// Generated by hermes-gadget face from {source}. Do not edit.",
+        "// Artwork: Hermes Agent mascot (MIT License, Copyright (c) 2025 Nous Research)."
+        if source.endswith("nous-girl-white-1024.png")
+        else "// Artwork: the drawing above; see docs/faces.md.",
+        '#include "hg/mascot.hpp"',
+        "",
+        "namespace hg::mascot {",
+        "namespace {",
+        "",
+    ]
+    table = []
+    for size in SIZES:
+        for frame in FRAMES:
+            name = f"k{frame.capitalize()}{size}"
+            data = to_bits(frames[frame], size, threshold)
+            lines.append(f"const uint8_t {name}[{len(data)}] = {{")
+            for i in range(0, len(data), 24):
+                lines.append("    " + ", ".join(f"0x{b:02x}" for b in data[i:i + 24]) + ",")
+            lines.append("};")
+            table.append((size, frame, name))
+    lines += ["", "const Bitmap kBitmaps[] = {"]
+    for size, frame, name in table:
+        lines.append(f"    {{{size}, Frame::{frame.capitalize()}, {name}}},")
+    ear, mouth, dot = anchors["ear_cup"], anchors["mouth_pt"], anchors["think_dot"]
+    eyes, mouth_rows = anchors["eyes_rows"], anchors["mouth_rows"]
+    a = thousandths
+    lines += [
+        "};",
+        "",
+        f"const Anchors kAnchors = {{{{{a(ear[0])}, {a(ear[1])}}}, {{{a(mouth[0])}, {a(mouth[1])}}}, "
+        f"{{{a(dot[0])}, {a(dot[1])}}}, {a(eyes[0])}, {a(eyes[1])}, {a(mouth_rows[0])}, {a(mouth_rows[1])}}};",
+        "",
+        "}  // namespace",
+        "",
+        "const Anchors& anchors() { return kAnchors; }",
+        "",
+        "const Bitmap* pick(int max_size, Frame frame) {",
+        "  const Bitmap* best = nullptr;",
+        "  for (const auto& b : kBitmaps) {",
+        "    if (b.frame != frame) continue;",
+        "    if (b.size <= max_size && (!best || b.size > best->size)) best = &b;",
+        "  }",
+        "  if (best) return best;",
+        "  for (const auto& b : kBitmaps) {",
+        "    if (b.frame == frame && (!best || b.size < best->size)) best = &b;",
+        "  }",
+        "  return best;",
+        "}",
+        "",
+        "}  // namespace hg::mascot",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+# -- looking at it before flashing ----------------------------------------------------------------------
+
+def _font(size: int):
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:  # Pillow < 10
+        return ImageFont.load_default()
+
+
+def _label(draw, xy, text, fill=(210, 218, 224), size=20, anchor=None):
+    draw.text(xy, text, font=_font(size), fill=fill, anchor=anchor)
+
+
+def preview(frames, path: Path, threshold: int = THRESHOLD) -> None:
+    """The frames as the screen shows them: a row per pose, a column per size."""
+    pad, scale, label_w, head_h = 10, 3, 86, 54
+    cols = [s * scale for s in SIZES]
+    sheet = Image.new("RGB", (label_w + sum(c + pad for c in cols) + pad,
+                              head_h + len(FRAMES) * (max(SIZES) * scale + pad) + pad), BG)
+    draw = ImageDraw.Draw(sheet)
+    _label(draw, (label_w, 8), "What the screen shows: each row is a pose, each column a size",
+           fill=(240, 244, 248), size=22)
+    x = label_w + pad
+    for size, width in zip(SIZES, cols):
+        _label(draw, (x + width // 2, 32), f"{size} px", size=18, anchor="ma")
+        x += width + pad
+    y = head_h
+    for frame in FRAMES:
+        row_h = max(SIZES) * scale
+        _label(draw, (pad, y + row_h // 2 - 12), frame, size=22)
+        x = label_w + pad
+        for size in SIZES:
+            ink = frames[frame].resize((size, size), Image.LANCZOS).point(
+                lambda v: 255 if v > threshold else 0)
+            tile = Image.new("RGB", (size, size), BG)
+            tile.paste(Image.new("RGB", (size, size), (232, 238, 242)), (0, 0), ink.convert("L"))
+            sheet.paste(tile.resize((size * scale, size * scale), Image.NEAREST), (x, y))
+            x += size * scale + pad
+        y += row_h + pad
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(path)
+
+
+def overlay(master, geo: dict, path: Path, box) -> None:
+    """The drawing with the feature marks on it, which is how they get placed."""
+    back = Image.new("RGB", master.size, BG)
+    back.paste(master, (0, 0), master)
+    draw = ImageDraw.Draw(back, "RGBA")
+    x0, y0, x1, y1 = box
+    draw.rectangle((x0, y0, x1, y1), outline=(120, 120, 120, 160), width=2)
+    for key, colour in (("eyes_rows", (255, 210, 80, 60)), ("mouth_rows", (80, 220, 255, 60))):
+        draw.rectangle((x0, geo[key][0], x1, geo[key][1]), fill=colour)
+    for side in ("left", "right"):
+        bx0, by0, bx1, by1 = geo[side]
+        draw.ellipse((bx0, by0, bx1, by1), outline=(255, 80, 80, 220), width=4)
+        cy = lid_cy(geo[side])
+        draw.line((bx0, cy, bx1, cy), fill=(255, 235, 60, 255), width=4)
+    draw.ellipse(geo["mouth"], outline=(80, 220, 255, 255), width=4)
+    for key, colour in (("ear_cup", (80, 255, 140, 255)), ("think_dot", (255, 120, 255, 255))):
+        px, py = geo[key]
+        draw.line((px - 26, py, px + 26, py), fill=colour, width=5)
+        draw.line((px, py - 26, px, py + 26), fill=colour, width=5)
+
+    art = back.resize((512, 512), Image.LANCZOS)
+    legend = [((255, 80, 80), "red circle = an eye"),
+              ((255, 235, 60), "yellow line = the lid it draws when blinking"),
+              ((80, 220, 255), "cyan = the mouth, which opens when speaking"),
+              ((80, 255, 140), "green cross = where the listening waves start"),
+              ((255, 120, 255), "magenta cross = where the thinking dots go")]
+    top = 574  # below the art and the two caption lines
+    sheet = Image.new("RGB", (512, top + 24 * len(legend) + 10), BG)
+    sheet.paste(art, (0, 0))
+    draw = ImageDraw.Draw(sheet)
+    _label(draw, (10, 520), "Where the marks landed.", fill=(240, 244, 248), size=19)
+    _label(draw, (10, 544), "Move them with the flags until they look right.", fill=(240, 244, 248), size=19)
+    for i, (colour, text) in enumerate(legend):
+        y = top + i * 24
+        draw.rectangle((12, y + 5, 34, y + 15), fill=colour)
+        _label(draw, (44, y), text, size=18)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(path)
+
+
+def report(frames, threshold: int = THRESHOLD) -> None:
+    """How much each frame moves against idle, which is what decides visibility.
+
+    The face is drawn at 192 px at most on a 240x240 screen, and the shipped
+    mascot changes 226 bits there on a blink. Much less and the blink is a
+    flicker nobody notices.
+    """
+    print("bits changed against idle (the shipped mascot changes 226 at 192 px):")
+    for size in SIZES:
+        idle = to_bits(frames["idle"], size, threshold)
+        parts = []
+        for frame in ("blink", "talk"):
+            other = to_bits(frames[frame], size, threshold)
+            bits = sum(bin(a ^ b).count("1") for a, b in zip(idle, other))
+            parts.append(f"{frame} {bits:>5} ({bits * 100 / (size * size):.2f}%)")
+        print(f"  {size:>3} px   " + "   ".join(parts))
+
+
+# -- placing the features by hand -----------------------------------------------------------------------
+
+# The window asks for these in order. The eyes and the mouth are required; the two
+# anchors have sensible defaults from the geometry, so they can be skipped.
+PICK_STEPS = (
+    ("left", "Click the centre of the NEAR eye"),
+    ("right", "Click the centre of the FAR eye"),
+    ("mouth", "Click the centre of the mouth"),
+    ("ear_cup", "Click where the listening waves should start, or press Return to keep the default"),
+    ("think_dot", "Click where the thinking dots go, or press Return to keep the default"),
+)
+REQUIRED_PICKS = ("left", "right", "mouth")
+
+
+class Picker:
+    """Turn clicks on a picture into the flags a run takes.
+
+    A click gives a position; the sizes come from the measurement, so a click only
+    has to land on the feature. The window is a thin shell over this, which keeps
+    the arithmetic testable without a display.
+    """
+
+    def __init__(self, box, geo: dict, opts: Options | None = None):
+        self.box = tuple(box)
+        self.geo = geo
+        self.opts = opts or Options()
+        self.picks: dict[str, tuple[int, int]] = {}
+        self.skipped: set[str] = set()
+
+    def _ink(self):
+        x0, y0, x1, y1 = self.box
+        return x0, y0, x1 - x0, y1 - y0
+
+    def next_step(self):
+        for name, _ in PICK_STEPS:
+            if name not in self.picks and name not in self.skipped:
+                return name
+        return None
+
+    def prompt(self) -> str:
+        name = self.next_step()
+        if name is None:
+            return "All placed. The flags for a run are below."
+        return dict(PICK_STEPS)[name]
+
+    def click(self, x: float, y: float) -> bool:
+        name = self.next_step()
+        if name is None:
+            return False
+        self.picks[name] = (round(x), round(y))
+        return True
+
+    def skip(self) -> bool:
+        name = self.next_step()
+        if name is None or name in REQUIRED_PICKS:
+            return False
+        self.skipped.add(name)
+        return True
+
+    def reset(self) -> None:
+        self.picks.clear()
+        self.skipped.clear()
+
+    def _fraction(self, x: float, y: float) -> tuple[float, float]:
+        x0, y0, w, h = self._ink()
+        return (x - x0) / w, (y - y0) / h
+
+    def _size(self, box) -> tuple[float, float]:
+        _, _, w, h = self._ink()
+        return (box[2] - box[0]) / w, (box[3] - box[1]) / h
+
+    def marks(self) -> dict:
+        """Where to draw the marks, in picture pixels: the picks, or the measurement."""
+        out = {}
+        for name in ("left", "right"):
+            out[name] = (self._box_at(self.picks[name], self.geo[name]) if name in self.picks
+                         else self.geo[name])
+        out["mouth"] = (self._box_at(self.picks["mouth"], self.geo["mouth"]) if "mouth" in self.picks
+                        else self.geo["mouth"])
+        for name in ("ear_cup", "think_dot"):
+            out[name] = self.picks.get(name) or self.geo[name]
+        return out
+
+    @staticmethod
+    def _box_at(centre, like) -> tuple[int, int, int, int]:
+        """The same size as a measured box, moved to a picked centre."""
+        cx, cy = centre
+        w, h = like[2] - like[0], like[3] - like[1]
+        x0, y0 = round(cx - w / 2), round(cy - h / 2)
+        return (x0, y0, x0 + w, y0 + h)
+
+    def flags(self) -> str | None:
+        """The flag line for a run, or None while a required pick is missing."""
+        if any(name not in self.picks for name in REQUIRED_PICKS):
+            return None
+        parts = ["--mask", self.opts.mask, "--threshold", str(self.opts.threshold),
+                 "--blink", self.opts.blink]
+        if self.opts.crop:
+            parts += ["--crop", *(str(value) for value in self.opts.crop)]
+        if self.opts.plain:
+            parts.append("--plain")
+        for side in ("left", "right"):
+            fx, fy = self._fraction(*self.picks[side])
+            fw, fh = self._size(self.geo[side])
+            parts += [f"--eye-{side}", f"{fx:.4f} {fy:.4f} {fw:.4f} {fh:.4f}"]
+        mx, my = self._fraction(*self.picks["mouth"])
+        mw, mh = self._size(self.geo["mouth"])
+        parts += ["--mouth-x", f"{mx:.4f}", "--mouth-y", f"{my:.4f}",
+                  "--mouth-w", f"{mw:.4f}", "--mouth-h", f"{mh:.4f}"]
+        for name, flag in (("ear_cup", "--ear-cup"), ("think_dot", "--think-dot")):
+            ex, ey = self._fraction(*self.marks()[name])
+            parts += [flag, f"{ex:.4f} {ey:.4f}"]
+        return " ".join(parts)
+
+    def command(self, path: Path) -> str | None:
+        """A command for PowerShell on Windows, or a POSIX shell elsewhere."""
+        flags = self.flags()
+        if flags is None:
+            return None
+        source = str(path.expanduser().resolve())
+        quoted = "'" + source.replace("'", "''") + "'" if os.name == "nt" else shlex.quote(source)
+        return f"hermes-gadget face {quoted} {flags}"
+
+
+def pick_features(path: Path, opts: Options, side: int = 620) -> str:
+    """Open a picture, click the features, print the flags for a real run.
+
+    The picture is shown the way the device sees it, after the mask and the crop,
+    with the marks the current geometry would draw. Tkinter is imported here rather
+    than at module level, so generating a face never needs a display.
+    """
+    try:
+        import tkinter as tk
+
+        from PIL import ImageTk
+    except ImportError as exc:  # a python built without Tk
+        raise SystemExit(
+            f"the picker needs Tk, and this python has no _tkinter ({exc}). On macOS with "
+            f"Homebrew python: brew install python-tk@3.13, or run the picker with a python "
+            f"that has it.") from exc
+
+    master = load_master(path, mask=opts.mask, threshold=opts.threshold, crop=opts.crop)
+    alpha = master.getchannel("A")
+    box = ink_box(alpha, opts.threshold)
+    picker = Picker(box, measure(alpha, opts), opts)
+    scale = side / master.width
+
+    shown = Image.new("RGB", master.size, BG)
+    shown.paste(master, (0, 0), master)
+    shown = shown.resize((side, side), Image.LANCZOS)
+
+    root = tk.Tk()
+    root.title("Place the features")
+    prompt = tk.Label(root, text=picker.prompt(), anchor="w", justify="left", font=("Helvetica", 14))
+    prompt.pack(fill="x", padx=12, pady=(12, 6))
+    canvas = tk.Canvas(root, width=side, height=side, highlightthickness=0,
+                       bg=f"#{BG[0]:02x}{BG[1]:02x}{BG[2]:02x}")
+    canvas.pack(padx=12)
+    photo = ImageTk.PhotoImage(shown)
+    canvas.create_image(0, 0, anchor="nw", image=photo)
+    flags_box = tk.Text(root, height=3, width=96, font=("Menlo", 11), wrap="word")
+    flags_box.pack(padx=12, pady=(8, 12))
+    flags_box.insert("1.0", "Click the three marks. Return skips the two optional ones. "
+                            "R starts over, Q quits.")
+
+    def draw() -> None:
+        canvas.delete("mark")
+        marks = picker.marks()
+        for name, box_in in marks.items():
+            colours = {"left": "#ff5050", "right": "#ff5050", "mouth": "#50dcff",
+                       "ear_cup": "#50ff8c", "think_dot": "#ff78ff"}
+            colour = colours[name]
+            if name in ("ear_cup", "think_dot"):
+                px, py = box_in
+                draw_x, draw_y = px * scale, py * scale
+                canvas.create_line(draw_x - 14, draw_y, draw_x + 14, draw_y, fill=colour, width=3,
+                                   tags="mark")
+                canvas.create_line(draw_x, draw_y - 14, draw_x, draw_y + 14, fill=colour, width=3,
+                                   tags="mark")
+            else:
+                x0, y0, x1, y1 = box_in
+                canvas.create_oval(x0 * scale, y0 * scale, x1 * scale, y1 * scale, outline=colour,
+                                   width=3, tags="mark")
+
+    def show_flags() -> None:
+        text = picker.command(path)
+        if text is None:
+            return
+        flags_box.delete("1.0", "end")
+        flags_box.insert("1.0", text)
+        print(text)
+        print("(the same line is in the window, to copy)")
+
+    def on_click(event) -> None:
+        picker.click(event.x / scale, event.y / scale)
+        prompt.config(text=picker.prompt())
+        draw()
+        show_flags()
+
+    def on_return(event) -> None:
+        if picker.skip():
+            prompt.config(text=picker.prompt())
+            show_flags()
+
+    def on_r(event) -> None:
+        picker.reset()
+        prompt.config(text=picker.prompt())
+        draw()
+        flags_box.delete("1.0", "end")
+        flags_box.insert("1.0", "Click the three marks. Return skips the two optional ones. "
+                                "R starts over, Q quits.")
+
+    canvas.bind("<Button-1>", on_click)
+    root.bind("<Return>", on_return)
+    root.bind("<r>", on_r)
+    root.bind("<R>", on_r)
+    root.bind("<q>", lambda _event: root.destroy())
+    root.bind("<Q>", lambda _event: root.destroy())
+    root.bind("<Escape>", lambda _event: root.destroy())
+    draw()
+    print("Place the features in the window: near eye, far eye, mouth. "
+          "Return skips the two optional anchors.")
+    root.mainloop()
+    return picker.flags() or ""
+
+
+def write(out: Path, frames, anchors: dict, source: str, threshold: int = THRESHOLD) -> None:
+    """The C++ for the firmware or, for a `.bin` name, a face file for a Hermes profile (docs/faces.md)."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if out.suffix == ".bin":
+        out.write_bytes(pack(frames, anchors, threshold))
+    else:
+        # Forward slashes and LF on every OS, so the file comes out the same everywhere.
+        out.write_text(emit(frames, anchors, source, threshold), encoding="utf-8", newline="\n")
+
+
+# -- the two things the CLI calls -----------------------------------------------------------------------
+
+def write_mascot(out: Path = OUT_DEFAULT, preview_path: Path | None = None,
+                 check_path: Path | None = None, want_report: bool = False) -> Path:
+    """Regenerate the shipped mascot. Byte for byte what gen_mascot.py produced."""
+    master = load_master(MASTER)
+    if master.size != (MASTER_SIZE, MASTER_SIZE):
+        raise SystemExit(f"{MASTER} must be {MASTER_SIZE}x{MASTER_SIZE}, got {master.size}")
+    alpha = master.getchannel("A")
+    frames = mascot_frames(master)
+    box = ink_box(alpha)
+    source = MASTER.relative_to(REPO).as_posix() if REPO in MASTER.parents else MASTER.name
+
+    write(out, frames, mascot_anchors(), source)
+    print(f"wrote {out}")
+    preview_path = preview_path or REPO / "build" / "mascot-preview.png"
+    preview(frames, preview_path)
+    print(f"wrote {preview_path}")
+    if want_report:
+        report(frames)
+    if check_path:
+        bbox = lambda points: (min(x for x, _ in points), min(y for _, y in points),
+                               max(x for x, _ in points), max(y for _, y in points))
+        marks = {**mascot_anchors(), "left": bbox(MASCOT["left_eye"]), "right": bbox(MASCOT["right_eye"]),
+                 "mouth": MASCOT["mouth_open"]}
+        overlay(master, marks, check_path, box)
+        print(f"wrote {check_path}")
+    return out
+
+
+def write_face(source: Path, opts: Options, out: Path = OUT_DEFAULT,
+               preview_path: Path | None = None, check_path: Path | None = None,
+               want_report: bool = False) -> Path:
+    """Generate a face from a picture. The shipped mascot can be restored with git."""
+    master = load_master(source, mask=opts.mask, threshold=opts.threshold, crop=opts.crop)
+    alpha = master.getchannel("A")
+    box = ink_box(alpha, opts.threshold)
+
+    geo = measure(alpha, opts)
+    frames = ({"idle": alpha, "blink": alpha, "talk": alpha} if opts.plain
+              else generic_frames(alpha, geo, opts.blink == "dark"))
+    label = source.relative_to(REPO).as_posix() if REPO in source.parents else source.name
+
+    print(f"ink box:   x {box[0]}..{box[2]}  y {box[1]}..{box[3]}")
+    print(f"eyes:      left {geo['left']}  right {geo['right']}")
+    print(f"lids:      left y {lid_cy(geo['left']):.0f} w {lid_width(geo['left'])}   "
+          f"right y {lid_cy(geo['right']):.0f} w {lid_width(geo['right'])}")
+    print(f"mouth:     {geo['mouth']}")
+    print(f"ear cup:   {tuple(round(v) for v in geo['ear_cup'])}   "
+          f"think dot: {tuple(round(v) for v in geo['think_dot'])}")
+
+    write(out, frames, geo, label, opts.threshold)
+    print(f"wrote {out}")
+    preview_path = preview_path or REPO / "build" / "face-preview.png"
+    preview(frames, preview_path, opts.threshold)
+    print(f"wrote {preview_path}")
+    if want_report:
+        report(frames, opts.threshold)
+    check_path = check_path or REPO / "build" / "face-check.png"
+    overlay(master, geo, check_path, box)
+    print(f"wrote {check_path}  <- look here first")
+    return out

@@ -1,0 +1,405 @@
+#include <algorithm>
+#include <array>
+#include <vector>
+
+#include "axp2101.hpp"
+#include "stc8_battery.hpp"
+#include "cores3.hpp"
+#include "sticks3.hpp"
+#include "check.hpp"
+#include "hg/battery.hpp"
+
+TEST("battery estimate: the shared single-cell map clamps endpoints and floors intermediate levels") {
+  struct Sample { uint16_t mv; uint8_t percent; };
+  for (const Sample& sample : {Sample{0, 0}, Sample{2000, 0}, Sample{3299, 0}, Sample{3300, 0},
+                               Sample{3308, 0}, Sample{3309, 1}, Sample{3549, 27}, Sample{3750, 50},
+                               Sample{4000, 77}, Sample{4199, 99}, Sample{4200, 100},
+                               Sample{4500, 100}, Sample{65535, 100}}) {
+    CHECK_EQ(hg::estimate_liion_percent(sample.mv), sample.percent);
+  }
+}
+
+TEST("STC8 battery: reads register bytes and maps only the Gadget power fields") {
+  const std::array<uint8_t, 12> raw = {0xeb, 0x0b, 0, 0, 0x90, 0x10, 0, 0, 0x64, 0x02, 0x02, 0xaa};
+  std::vector<uint8_t> registers;
+  hg::Stc8Battery power([&](uint8_t reg, uint8_t& value) {
+    registers.push_back(reg);
+    value = raw[reg];
+    return true;
+  });
+
+  const auto status = power.read();
+
+  CHECK(status.has_value());
+  CHECK(registers == std::vector<uint8_t>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}));
+  CHECK(status->battery_mv == uint16_t(4240));
+  CHECK(status->battery_percent == uint8_t(100));
+  CHECK(status->charging == false);
+  CHECK(!power.can_power_off());
+  CHECK(!power.power_off());
+}
+
+TEST("STC8 battery: charging state maps to the generic charging flag") {
+  const std::array<uint8_t, 12> raw = {0xeb, 0x0b, 0, 0, 0x88, 0x10, 0, 0, 75, 1, 1, 0};
+  hg::Stc8Battery power([&](uint8_t reg, uint8_t& value) { value = raw[reg]; return true; });
+
+  const auto status = power.read();
+
+  CHECK(status.has_value());
+  CHECK(status->charging == true);
+}
+
+TEST("STC8 battery: error state is preserved without claiming not charging") {
+  const std::array<uint8_t, 12> raw = {0xeb, 0x0b, 0, 0, 0x90, 0x10, 0, 0, 100, 4, 4, 0};
+  hg::Stc8Battery power([&](uint8_t reg, uint8_t& value) { value = raw[reg]; return true; });
+
+  const auto status = power.read();
+
+  CHECK(status.has_value());
+  CHECK(!status->charging.has_value());
+}
+
+TEST("STC8 battery: a register read failure discards the sample and stops the sequence") {
+  std::vector<uint8_t> registers;
+  hg::Stc8Battery power([&](uint8_t reg, uint8_t& value) {
+    registers.push_back(reg);
+    if (reg == 5) return false;
+    value = 0;
+    return true;
+  });
+
+  CHECK(!power.read());
+  CHECK(registers == std::vector<uint8_t>({0, 1, 2, 3, 4, 5}));
+}
+
+TEST("STC8 battery: invalid values are omitted rather than reported as real telemetry") {
+  const std::array<uint8_t, 12> raw = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 101, 5, 5, 0xaa};
+  hg::Stc8Battery power([&](uint8_t reg, uint8_t& value) { value = raw[reg]; return true; });
+
+  const auto status = power.read();
+
+  CHECK(status.has_value());
+  CHECK(!status->battery_mv);
+  CHECK(!status->battery_percent);
+  CHECK(!status->charging);
+  CHECK(!status->battery_present);
+  CHECK(!status->external_power);
+}
+
+TEST("battery estimate: the resting-voltage curve clamps endpoints, interpolates and floors") {
+  struct Sample { uint16_t mv; uint8_t percent; };
+  for (const Sample& sample : {Sample{0, 0}, Sample{3300, 0}, Sample{3455, 2}, Sample{3610, 5}, Sample{3750, 25},
+                               Sample{3840, 50}, Sample{3867, 59}, Sample{3909, 64}, Sample{4110, 90},
+                               Sample{4199, 99}, Sample{4200, 100}, Sample{65535, 100}}) {
+    CHECK_EQ(hg::estimate_liion_curve_percent(sample.mv), sample.percent);
+  }
+  // Monotonic: a higher voltage never shows a lower level.
+  for (uint16_t mv = 3300; mv < 4200; ++mv)
+    CHECK(hg::estimate_liion_curve_percent(mv + 1) >= hg::estimate_liion_curve_percent(mv));
+}
+
+TEST("AXP2101: battery, USB and charging readings never alter power configuration") {
+  std::array<uint8_t, 256> regs{};
+  regs[0x00] = 0x28;
+  regs[0x01] = 0x20;
+  regs[0x18] = 0x0a;
+  regs[0x30] = 0x03;
+  regs[0x34] = 0xcf;  // high status bits must not become voltage bits
+  regs[0x35] = 0xa0;  // 4000 mV
+  regs[0xa4] = 81;
+  int failed_reg = -1;
+  std::vector<std::pair<uint8_t, uint8_t>> writes;
+  hg::Axp2101 power(
+      [&](uint8_t reg, uint8_t* out, size_t n) {
+        if (reg == failed_reg) return false;
+        for (size_t i = 0; i < n; ++i) out[i] = regs[reg + i];
+        return true;
+      },
+      [&](uint8_t reg, uint8_t value) { writes.emplace_back(reg, value); return true; });
+  auto p = power.read();
+  CHECK(p.has_value());
+  CHECK(p->battery_present == true);
+  CHECK(p->external_power == true);
+  CHECK(p->charging == true);
+  CHECK(p->battery_mv == 4000);
+  CHECK(p->battery_percent == 81);
+  CHECK(writes.empty());
+
+  regs[0xa4] = 255;
+  CHECK_EQ(power.read()->battery_percent, uint8_t(77));  // junk gauge falls back to the voltage curve (4000 mV -> 77)
+  regs[0xa4] = 0;
+  p = power.read();
+  CHECK_EQ(p->battery_percent, uint8_t(77));  // gauge stuck at 0: honest percent from voltage, no false "low battery"
+  regs[0x34] = 0x0d;  // 3549 mV -> 27% on the 3300..4200 map
+  regs[0x35] = 0xdd;
+  CHECK_EQ(power.read()->battery_percent, uint8_t(27));
+  regs[0x00] = 0x20;
+  p = power.read();
+  CHECK(p->battery_present == false);
+  CHECK(p->charging == false);
+  CHECK(!p->battery_mv);
+  CHECK(!p->battery_percent);
+  regs[0x00] = 0x08;
+  regs[0x18] = regs[0x30] = 0;
+  p = power.read();
+  CHECK(!p->battery_mv);
+  CHECK(!p->battery_percent);
+  CHECK(writes.empty());
+  failed_reg = 0x00;
+  CHECK(!power.read());
+  regs[0x00] = 0x28;
+  regs[0x18] = 0x0a;
+  regs[0x30] = 0x03;
+  failed_reg = 0xa4;
+  CHECK(!power.read());  // a gauge the bus can't read is unavailable, not estimated from voltage
+  failed_reg = 0x10;
+  CHECK(!power.power_off());
+  CHECK(writes.empty());
+  failed_reg = -1;
+  regs[0x10] = 0x34;
+  CHECK(power.power_off());
+  CHECK_EQ(writes.size(), size_t(1));
+  CHECK_EQ(writes[0].first, uint8_t(0x10));
+  CHECK_EQ(writes[0].second, uint8_t(0x35));
+}
+
+TEST("AXP2101: audio supply enables ALDO1 at 3.3 V and preserves other rails") {
+  std::array<uint8_t, 256> regs{};
+  regs[0x90] = 0xa4;
+  regs[0x92] = 0x60;
+  regs[0x62] = 0x08;  // charge current must stay unchanged
+  bool failed = false;
+  hg::Axp2101 power(
+      [&](uint8_t reg, uint8_t* out, size_t n) {
+        if (failed) return false;
+        for (size_t i = 0; i < n; ++i) out[i] = regs[reg + i];
+        return true;
+      },
+      [&](uint8_t reg, uint8_t value) { regs[reg] = value; return true; });
+  CHECK(power.enable_aldo1_3v3());
+  CHECK_EQ(regs[0x90], uint8_t(0xa5));
+  CHECK_EQ(regs[0x92], uint8_t(0x7c));
+  CHECK_EQ(regs[0x62], uint8_t(0x08));
+  failed = true;
+  CHECK(!power.enable_aldo1_3v3());
+}
+
+TEST("CoreS3: peripheral power preserves charger and external output configuration") {
+  std::array<uint8_t, 256> pmic{}, io{};
+  pmic.fill(0x60);
+  pmic[0x90] = 0xe4;
+  io.fill(0xff);
+  auto expected_pmic = pmic;
+  auto expected_io = io;
+  std::vector<uint32_t> delays;
+  hg::CoreS3Control control(
+      [&](uint8_t addr, uint8_t reg, uint8_t& value) {
+        value = (addr == 0x34 ? pmic : io)[reg]; return true;
+      },
+      [&](uint8_t addr, uint8_t reg, uint8_t value) {
+        (addr == 0x34 ? pmic : io)[reg] = value; return true;
+      },
+      [&](uint32_t ms) {
+        delays.push_back(ms);
+        if (ms == 10) { CHECK_EQ(io[0x02], 0xfa); CHECK_EQ(io[0x03], 0xfd); }
+        if (ms == 300) { CHECK_EQ(io[0x02], 0xff); CHECK_EQ(io[0x03], 0xff); }
+      });
+  CHECK(control.begin());
+  expected_pmic[0x92] = 0x6d;  // ALDO1: 1.8 V
+  expected_pmic[0x93] = 0x7c;  // ALDO2: 3.3 V
+  expected_pmic[0x90] = 0x67;  // enable audio rails, disable backlight
+  expected_io[0x04] = 0xfa;
+  expected_io[0x05] = 0x7d;
+  CHECK(pmic == expected_pmic);
+  CHECK(io == expected_io);
+  CHECK(delays == std::vector<uint32_t>({10, 300}));
+  CHECK(control.set_brightness(50));
+  CHECK_EQ(pmic[0x99], 0x78);  // DLDO1: 2.9 V, upper bits retained
+  CHECK_EQ(pmic[0x90], 0xe7);
+  CHECK(control.set_brightness(255));
+  CHECK_EQ(pmic[0x99], 0x7c);  // clamp to 3.3 V
+  CHECK(control.set_brightness(0));
+  CHECK_EQ(pmic[0x90], 0x67);
+  CHECK_EQ(pmic[0x62], 0x60);  // charging current is untouched
+  CHECK(io == expected_io);
+}
+
+TEST("CoreS3: failed power access stops initialization without releasing reset") {
+  bool read_ok = false;
+  int writes = 0, delays = 0;
+  hg::CoreS3Control control(
+      [&](uint8_t, uint8_t, uint8_t& value) { value = 0; return read_ok; },
+      [&](uint8_t, uint8_t, uint8_t) { ++writes; return false; },
+      [&](uint32_t) { ++delays; });
+  CHECK(!control.begin());
+  CHECK_EQ(writes, 0);
+  read_ok = true;
+  CHECK(!control.begin());
+  CHECK_EQ(writes, 1);
+  CHECK_EQ(delays, 0);
+  CHECK(!control.set_brightness(100));
+  CHECK_EQ(writes, 2);
+}
+
+namespace {
+// The StickS3's M5PM1 as a register file.
+struct FakePm1 {
+  std::array<uint8_t, 256> regs{};
+  bool fail = false;
+  std::vector<uint8_t> written;
+  hg::StickS3Control::Read read = [this](uint8_t reg, uint8_t* out, size_t n) {
+    if (fail) return false;
+    for (size_t i = 0; i < n; ++i) out[i] = regs[reg + i];
+    return true;
+  };
+  hg::StickS3Control::Write write = [this](uint8_t reg, uint8_t value) {
+    if (fail) return false;
+    written.push_back(reg);
+    regs[reg] = value;
+    return true;
+  };
+};
+}  // namespace
+
+TEST("StickS3: the LCD rail comes on and the amplifier stays off; other PM1 pins are preserved") {
+  FakePm1 fake;
+  auto& pm1 = fake.regs;
+  auto& written = fake.written;
+  pm1.fill(0xff);
+  pm1[0x09] = 0x01;  // I2C idle sleep left on by earlier firmware
+  pm1[0x10] = 0x00;
+  std::vector<uint32_t> delays;
+  hg::StickS3Control control(fake.read, fake.write, [&](uint32_t ms) {
+    delays.push_back(ms);
+    CHECK_EQ(pm1[0x10], 0x0c);  // both outputs set before the wait, GPIO0 an input
+  });
+  CHECK(control.begin());
+  CHECK_EQ(pm1[0x09], 0x00);
+  CHECK_EQ(pm1[0x0a], 0x00);  // watchdog off
+  CHECK_EQ(pm1[0x16], 0x0c);  // GPIO0/2/3 fields plain GPIO; GPIO1's field untouched
+  CHECK_EQ(pm1[0x13], 0xf3);  // push-pull
+  CHECK_EQ(pm1[0x11], 0xf7);  // LCD rail high, amplifier low
+  CHECK(delays == std::vector<uint32_t>({100}));
+  // Levels are set before the pins become outputs.
+  const auto out = std::find(written.begin(), written.end(), uint8_t(0x11));
+  const auto mode = std::find(written.begin(), written.end(), uint8_t(0x10));
+  CHECK(out < mode);
+
+  written.clear();
+  CHECK(control.set_amplifier(true));
+  CHECK_EQ(pm1[0x11], 0xff);
+  CHECK(control.set_amplifier(true));  // no change, no write
+  CHECK_EQ(written.size(), size_t(1));
+  CHECK(control.set_amplifier(false));
+  CHECK_EQ(pm1[0x11], 0xf7);
+}
+
+TEST("StickS3: a PM1 that does not answer stops initialization") {
+  FakePm1 fake;
+  fake.fail = true;
+  int delays = 0;
+  hg::StickS3Control control(fake.read, fake.write, [&](uint32_t) { ++delays; });
+  CHECK(!control.begin());
+  CHECK(fake.written.empty());
+  CHECK_EQ(delays, 0);
+  CHECK(!control.read());
+  CHECK(!control.external_power());
+}
+
+TEST("StickS3: battery millivolts, USB and the active-low charge status are reported") {
+  FakePm1 fake;
+  hg::StickS3Control control(fake.read, fake.write, [](uint32_t) {});
+  fake.regs[0x22] = 0x9c;  // 3996 mV, little-endian
+  fake.regs[0x23] = 0x0f;
+  fake.regs[0x04] = 0x05;  // USB and battery
+  fake.regs[0x12] = 0x00;  // charge status low: charging
+  auto s = control.read();
+  CHECK(s.has_value());
+  CHECK(s->battery_present == std::optional<bool>(true));
+  CHECK(s->battery_mv == std::optional<uint16_t>(3996));
+  CHECK(s->battery_percent == std::optional<uint8_t>(hg::estimate_liion_curve_percent(3996)));
+  CHECK(s->external_power == std::optional<bool>(true));
+  CHECK(s->charging == std::optional<bool>(true));
+  CHECK(control.external_power() == std::optional<bool>(true));
+
+  fake.regs[0x12] = 0x01;  // high: charged, or not charging
+  CHECK(control.read()->charging == std::optional<bool>(false));
+
+  fake.regs[0x04] = 0x04;  // battery only: never charging, whatever the pin reads
+  fake.regs[0x12] = 0x00;
+  s = control.read();
+  CHECK(s->external_power == std::optional<bool>(false));
+  CHECK(s->charging == std::optional<bool>(false));
+
+  fake.regs[0x22] = 0x00;  // nothing on the battery node
+  fake.regs[0x23] = 0x00;
+  s = control.read();
+  CHECK(s->battery_present == std::optional<bool>(false));
+  CHECK(!s->battery_mv && !s->battery_percent && !s->charging);
+}
+
+TEST("StickS3: power off turns the amplifier off, then sends the PM1 shutdown command") {
+  FakePm1 fake;
+  hg::StickS3Control control(fake.read, fake.write, [](uint32_t) {});
+  CHECK(control.set_amplifier(true));
+  fake.written.clear();
+  CHECK(control.power_off());
+  CHECK_EQ(fake.regs[0x11] & 0x08, 0);
+  CHECK(fake.written.back() == 0x0c);
+  CHECK_EQ(fake.regs[0x0c], 0xa1);
+}
+
+TEST("AXP2101: the power key's short press is read once and cleared; enabling touches only interrupts") {
+  std::array<uint8_t, 256> regs{};
+  regs[0x41] = 0x40;  // another interrupt already enabled
+  regs[0x49] = 0x08;  // a press from before boot
+  bool fail_reads = false;
+  std::vector<std::pair<uint8_t, uint8_t>> writes;
+  hg::Axp2101 power(
+      [&](uint8_t reg, uint8_t* out, size_t n) {
+        if (fail_reads) return false;
+        for (size_t i = 0; i < n; ++i) out[i] = regs[reg + i];
+        return true;
+      },
+      [&](uint8_t reg, uint8_t value) {
+        writes.emplace_back(reg, value);
+        if (reg == 0x49) regs[reg] = static_cast<uint8_t>(regs[reg] & ~value);  // write 1 to clear
+        else regs[reg] = value;
+        return true;
+      });
+  CHECK(power.enable_key_press());
+  CHECK_EQ(writes.size(), size_t(2));
+  CHECK(writes[0] == std::make_pair(uint8_t(0x41), uint8_t(0x48)));  // short press added, the rest kept
+  CHECK(writes[1] == std::make_pair(uint8_t(0x49), uint8_t(0x08)));  // the old press is dropped
+  CHECK(!power.take_key_press());
+
+  writes.clear();
+  regs[0x49] = 0x0c;  // short press, plus a long press that isn't ours to clear
+  CHECK(power.take_key_press());
+  CHECK(!power.take_key_press());
+  CHECK_EQ(writes.size(), size_t(1));
+  CHECK(writes[0] == std::make_pair(uint8_t(0x49), uint8_t(0x08)));
+  CHECK_EQ(regs[0x49], uint8_t(0x04));
+
+  regs[0x49] = 0x08;
+  fail_reads = true;
+  CHECK(!power.take_key_press());  // a failed read is no press
+  CHECK(!power.enable_key_press());
+}
+
+TEST("AXP2101: external power is read from VBUS good, and a failed read is unknown") {
+  uint8_t status = 0x20;
+  bool fail = false;
+  hg::Axp2101 power(
+      [&](uint8_t reg, uint8_t* out, size_t n) {
+        if (fail || reg != 0x00 || n != 1) return false;
+        *out = status;
+        return true;
+      },
+      [&](uint8_t, uint8_t) { return false; });
+  CHECK(power.vbus_good() == std::optional<bool>(true));
+  status = 0x08;  // battery present, no VBUS
+  CHECK(power.vbus_good() == std::optional<bool>(false));
+  fail = true;
+  CHECK(!power.vbus_good().has_value());
+}
