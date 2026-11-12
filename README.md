@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://joshaico.github.io/gadget/installer.html"><b>Set up a board</b></a> ·
+  <a href="https://gadget.joshai.co/installer.html"><b>Set up a board</b></a> ·
   <a href="docs/desktop.md"><b>Try the simulator</b></a> ·
   <a href="docs/getting-started.md">Read the docs</a>
 </p>
@@ -30,7 +30,7 @@
 
 | I have a board | I want to try it first | I want to build with it |
 |---|---|---|
-| [Open the browser installer](https://joshaico.github.io/gadget/installer.html) | [Start the desktop simulator](docs/desktop.md) | [Explore the SDK](docs/development.md) |
+| [Open the browser installer](https://gadget.joshai.co/installer.html) | [Start the desktop simulator](docs/desktop.md) | [Explore the SDK](docs/development.md) |
 | Install over USB, connect Wi-Fi, and pair with your Joshaico. | Try a scripted demo, then connect your own Joshaico. | Add a board, device actions, sensors, or your own face. |
 | Chrome or Edge, a USB data cable, 2.4 GHz Wi-Fi, and Joshaico. No firmware toolchain. | Python 3.10+, CMake 3.16+, and a C++17 compiler. | Start with the development guide and tests. |
 

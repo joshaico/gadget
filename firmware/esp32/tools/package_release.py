@@ -42,7 +42,7 @@ from check_size import TYPE_APP, partitions  # noqa: E402
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 PROJECT_NAME = "hermes_gadget"      # esp_app_desc_t.project_name of every Joshaico Gadget image
 BOARD_TAG = b"HGBOARD="             # the board name the firmware reports (main/board.cpp)
-INSTALLER_URL = "https://joshaico.github.io/gadget/installer.html"
+INSTALLER_URL = "https://gadget.joshai.co/installer.html"
 TYPE_DATA, SUBTYPE_OTA, SUBTYPE_NVS = 0x01, 0x00, 0x02
 # Where the second-stage bootloader goes; the other chips after the ESP32-S2 start at 0.
 BOOTLOADER_OFFSET = {"esp32": 0x1000, "esp32s2": 0x1000, "esp32p4": 0x2000}

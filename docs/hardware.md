@@ -1245,7 +1245,7 @@ This is an experimental profile. Touch input/coordinates, actual microphone capt
 
 ## Build and flash
 
-**No toolchain needed:** the [browser installer](https://joshaico.github.io/gadget/) flashes each release's prebuilt firmware from Chrome or Edge, then sets up Wi-Fi and pairing. The release files are also on the [releases page](https://github.com/joshaico/gadget/releases), for `esptool.py write_flash 0x0 hermes-gadget-<board>-<version>.bin`, which also erases the board's settings.
+**No toolchain needed:** the [browser installer](https://gadget.joshai.co/) flashes each release's prebuilt firmware from Chrome or Edge, then sets up Wi-Fi and pairing. The release files are also on the [releases page](https://github.com/joshaico/gadget/releases), for `esptool.py write_flash 0x0 hermes-gadget-<board>-<version>.bin`, which also erases the board's settings.
 
 To build it yourself, with ESP-IDF 5.3 or later installed (`. $IDF_PATH/export.sh`):
 

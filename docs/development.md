@@ -9,7 +9,7 @@ firmware/core/          Portable device core (C++17), shared by the ESP32 and th
 firmware/sim/           C ABI wrapper the simulator loads (hgsim.dll / libhgsim.so)
 firmware/esp32/         ESP-IDF application and board configurations
 firmware/tests/         Core unit tests (no dependencies)
-site/                   Product homepage, hosted guides, and browser installer (GitHub Pages)
+site/                   Product homepage, hosted guides, and browser installer (gadget.joshai.co)
 tests/                  Python tests: plugin units, simulator ↔ hub, adapter on Hermes, gateway E2E
 docs/                   Architecture, protocol, integration, guides
 tools/                  make_logo.py (the logo), check_versions.py (the release version check), capture_window.py (README screenshots of the simulator window)
@@ -55,7 +55,7 @@ Cross-language guarantees:
 
 ### The browser installer
 
-`site/` contains the product homepage, browser installer, and documentation, published to GitHub Pages by `.github/workflows/pages.yml` with the latest release's firmware. The build renders `docs/*.md` into the hosted guides with `marked`; edit the Markdown rather than the generated pages. Search runs in the browser and sends no queries to a server.
+`site/` contains the product homepage, browser installer, and documentation, served from `https://gadget.joshai.co/`. `.github/workflows/installer.yml` builds it with the latest release's firmware and uploads the result as an artifact. The build renders `docs/*.md` into the hosted guides with `marked`; edit the Markdown rather than the generated pages. Search runs in the browser and sends no queries to a server.
 
 The installer flashes boards with [esptool-js](https://github.com/espressif/esptool-js) over Web Serial (Chrome and Edge), checks the chip against the release manifest first, and then talks to the firmware's serial console to set Wi-Fi, the Hermes address, and the name. To try it locally with your own builds:
 

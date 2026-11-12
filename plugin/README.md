@@ -15,7 +15,7 @@
 
   <br /><br />
 
-  [Install it](#install) &nbsp;·&nbsp; [What it adds](#what-it-adds) &nbsp;·&nbsp; [What it does on your machine](#what-it-does-on-your-machine) &nbsp;·&nbsp; [Website](https://joshaico.github.io/gadget/)
+  [Install it](#install) &nbsp;·&nbsp; [What it adds](#what-it-adds) &nbsp;·&nbsp; [What it does on your machine](#what-it-does-on-your-machine) &nbsp;·&nbsp; [Website](https://gadget.joshai.co/)
 
 </div>
 
@@ -25,7 +25,7 @@
 
 Hermes Gadget adds a messaging platform to the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway. Each gadget is a chat: you speak, Hermes's speech-to-text turns it into a message, your agent answers with its usual tools, memory and skills, and the reply is shown on the device and spoken through Hermes's text-to-speech. Unknown devices go through Hermes's own pairing codes, and command approvals appear on the device as yes/no questions.
 
-This directory is the plugin. The rest of the [repository](https://github.com/joshaico/gadget) holds the device firmware, a [browser installer](https://joshaico.github.io/gadget/installer.html), a Raspberry Pi client and a desktop simulator.
+This directory is the plugin. The rest of the [repository](https://github.com/joshaico/gadget) holds the device firmware, a [browser installer](https://gadget.joshai.co/installer.html), a Raspberry Pi client and a desktop simulator.
 
 ## Install
 
@@ -37,7 +37,7 @@ The plugin ships with Joshaico. Turn the gateway on and pick Gadget:
 joshaico gateway setup
 ```
 
-Restart the gateway when it asks. Then set up a board from the [installer](https://joshaico.github.io/gadget/installer.html) or try the [desktop simulator](https://joshaico.github.io/gadget/docs/desktop.html). The [Connect Joshaico guide](../docs/connect-hermes.md) covers each step.
+Restart the gateway when it asks. Then set up a board from the [installer](https://gadget.joshai.co/installer.html) or try the [desktop simulator](https://gadget.joshai.co/docs/desktop.html). The [Connect Joshaico guide](../docs/connect-hermes.md) covers each step.
 
 ## What it adds
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 # The browser installer: flashes a board over USB and gives it Wi-Fi and this Hermes's address.
-INSTALLER_URL = "https://joshaico.github.io/gadget/"
+INSTALLER_URL = "https://gadget.joshai.co/"
 PAIR_TIMEOUT_S = 300
 
 

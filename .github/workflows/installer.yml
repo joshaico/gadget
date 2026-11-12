@@ -1,20 +1,22 @@
 name: Installer site
 
-# Builds the browser installer with the latest release's firmware and publishes it with GitHub
-# Pages: on every release, and when the site itself changes.
+# Builds the browser installer with the latest release's firmware. The page is served from
+# https://gadget.joshai.co/, not GitHub Pages (Pages cannot publish a private repository on a
+# free plan), so the build is uploaded as an artifact instead of deployed. FORK.md,
+# "Hosting the installer", says how to put a build on the host.
 on:
   release:
     types: [published]
   push:
     branches: [main]
-    paths: ["site/**", "docs/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "docs/**", ".github/workflows/installer.yml"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  group: installer
   cancel-in-progress: false
 
 jobs:
@@ -52,18 +54,3 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5
         with:
           path: _site
-
-  deploy:
-    name: Deploy
-    needs: build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5

@@ -39,4 +39,27 @@ suites pin the same identity, auth and OTA vectors.
 The v2 port is complete as of the import: firmware, the plugin copy, the
 desktop simulator and every pinned test vector speak `joshaico-gadget.v2`,
 and the installer installs the images this tree builds. The gadget page in
-Joshaico points at `https://joshaico.github.io/gadget/installer.html`.
+Joshaico points at `https://gadget.joshai.co/installer.html`.
+
+## Hosting the installer
+
+The repository is private, and GitHub Pages cannot publish a private repository
+on a free plan, so the built site is served from `gadget.joshai.co` by a static
+server on the host, reached through the existing `wsl-agent` Cloudflare Tunnel.
+
+- Server: `gadget-installer.service` (user unit) runs
+  `python3 -m http.server 9131` over `~/.joshaico/gadget-installer/site`.
+- Tunnel: `~/.cloudflared/config.yml` routes the `gadget.joshai.co` hostname to
+  `127.0.0.1:9131`; the DNS CNAME came from
+  `cloudflared tunnel route dns wsl-agent gadget.joshai.co`.
+- Build: `.github/workflows/installer.yml` uploads the site as an artifact with
+  the latest release's firmware. To publish a build, copy it over the served
+  directory and the server picks it up on the next request.
+
+```bash
+cd site && node scripts/build.mjs --out ~/.joshaico/gadget-installer/site
+```
+
+Ingress is first-match, so a new hostname rule goes above the
+`service: http_status:404` catch-all, and cloudflared must be restarted
+(`systemctl restart cloudflared-named.service`) to read the file.

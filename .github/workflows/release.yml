@@ -178,8 +178,8 @@ jobs:
           else
             gh release create "$TAG" dist/* --title "Hermes Gadget ${TAG#v}" --notes-file "$RUNNER_TEMP/notes.md"
           fi
-      - name: Update the installer site
-        # A release published with this workflow's token starts no other workflow, so start the deploy.
+      - name: Build the installer site
+        # A release published with this workflow's token starts no other workflow, so start the build.
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+        run: gh workflow run installer.yml --repo "$GITHUB_REPOSITORY" --ref main

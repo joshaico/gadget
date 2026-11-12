@@ -4,7 +4,7 @@ contact_links:
     url: https://github.com/joshaico/gadget/security/advisories/new
     about: Report it privately, not in a public issue.
   - name: Installer troubleshooting
-    url: https://joshaico.github.io/gadget/#help-title
+    url: https://gadget.joshai.co/#help-title
     about: Common problems with flashing, Wi-Fi and reaching Hermes.
   - name: A problem in Hermes Agent itself
     url: https://github.com/NousResearch/hermes-agent/issues
