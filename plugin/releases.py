@@ -11,7 +11,7 @@ import json
 import urllib.error
 import urllib.request
 
-RELEASES = "https://github.com/Adolanium/hermes-gadget-sdk/releases"
+RELEASES = "https://github.com/joshaico/gadget/releases"
 TIMEOUT_S = 30
 MAX_MANIFEST_BYTES = 256 * 1024
 MAX_APP_BYTES = 8 * 1024 * 1024

@@ -40,10 +40,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_size import TYPE_APP, partitions  # noqa: E402
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
-PROJECT_NAME = "hermes_gadget"      # esp_app_desc_t.project_name of every Hermes Gadget image
+PROJECT_NAME = "hermes_gadget"      # esp_app_desc_t.project_name of every Joshaico Gadget image
 BOARD_TAG = b"HGBOARD="             # the board name the firmware reports (main/board.cpp)
-INSTALLER_URL = "https://adolanium.github.io/hermes-gadget-sdk/"
-GIT_URL = "https://github.com/Adolanium/hermes-gadget-sdk.git"
+INSTALLER_URL = "https://joshaico.github.io/gadget/installer.html"
 TYPE_DATA, SUBTYPE_OTA, SUBTYPE_NVS = 0x01, 0x00, 0x02
 # Where the second-stage bootloader goes; the other chips after the ESP32-S2 start at 0.
 BOOTLOADER_OFFSET = {"esp32": 0x1000, "esp32s2": 0x1000, "esp32p4": 0x2000}
@@ -224,7 +223,7 @@ def write_release(builds: list[Build], out: Path, project: Path = PROJECT_DIR, n
         raise PackageError(f"the boards report different versions: {', '.join(versions)}")
     version = versions[0]
     out.mkdir(parents=True, exist_ok=True)
-    manifest = {"name": "Hermes Gadget", "version": version, "builds": []}
+    manifest = {"name": "Joshaico Gadget", "version": version, "builds": []}
     manifest["licenses"] = license_archive(project, out / f"hermes-gadget-{version}-licenses.zip", notices)
     for b in builds:
         stem = f"hermes-gadget-{b.board}-{version}"
@@ -263,13 +262,13 @@ def release_notes(manifest: dict, commit: str | None = None, changelog: str | No
     rows = "\n".join(f"| {b['title']} | `{b['image']['path']}` | `{b['app']['path']}` |" for b in manifest["builds"])
     chips = sorted({b["chip"].lower().replace("-", "") for b in manifest["builds"]})
     plugin = "" if not commit else f"""
-**The Hermes plugin from the same commit:**
+**The plugin from the same commit** (Joshaico bundles the Gadget plugin, so turn it on):
 
 ```bash
-hermes plugins install {GIT_URL}#plugin --ref {commit} --enable
+joshaico gateway setup
 ```
 """
-    return f"""Hermes Gadget firmware {version}.
+    return f"""Joshaico Gadget firmware {version}.
 {changes}
 **Install from your browser:** {INSTALLER_URL} (Chrome or Edge, over USB). It checks the board before \
 writing, and a device you reinstall keeps its settings.
@@ -281,10 +280,10 @@ writing, and a device you reinstall keeps its settings.
 **Flash with esptool:** `esptool.py --chip {chips[0] if len(chips) == 1 else '<chip>'} write_flash 0x0 \
 hermes-gadget-<board>-{version}.bin`. This also erases the device's settings, so it pairs again as a new device.
 
-**Update a running device:** `hermes gadget update <device> hermes-gadget-<board>-{version}-app.bin`.
+**Update a running device:** `joshaico gadget update <device> hermes-gadget-<board>-{version}-app.bin`.
 {plugin}
 Checksums are in `SHA256SUMS`. License texts and notices are in `hermes-gadget-{version}-licenses.zip`.
-Every file has a GitHub build provenance attestation. Check a download with `gh attestation verify <file> --repo Adolanium/hermes-gadget-sdk`.
+Every file has a GitHub build provenance attestation. Check a download with `gh attestation verify <file> --repo joshaico/gadget`.
 """
 
 

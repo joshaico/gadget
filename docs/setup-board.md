@@ -34,7 +34,7 @@ Follow [Connect Hermes](connect-hermes.md#1-install-the-plugin) to install and e
 
 ## 3. Install and connect
 
-Open the [browser installer](https://adolanium.github.io/hermes-gadget-sdk/installer.html). Plug in the board and select its model. The next step shows the Hermes commands. If you completed them above, choose **Hermes is ready**.
+Open the [browser installer](https://joshaico.github.io/gadget/installer.html). Plug in the board and select its model. The next step shows the Hermes commands. If you completed them above, choose **Hermes is ready**.
 
 1. Install the firmware. Keep the cable connected until the installer says it has finished.
 2. Enter the Wi-Fi network, password, Hermes address, and device name.
@@ -74,7 +74,7 @@ USB remains available if phone setup cannot connect. The console accepts `wifi-s
 
 ## Get help
 
-Open **Troubleshooting** in the browser installer. Under **Something else**, choose **Save a diagnostics report**. Attach the file to a [bug report](https://github.com/Adolanium/hermes-gadget-sdk/issues).
+Open **Troubleshooting** in the browser installer. Under **Something else**, choose **Save a diagnostics report**. Attach the file to a [bug report](https://github.com/joshaico/gadget/issues).
 
 Taking the gadget away from home? See [Using Tailscale Funnel for remote access](tailscale-funnel.md): the funnel URL works as the Hermes address on any network, including a phone's personal hotspot. If Hermes is only reachable on your tailnet, firmware built with the experimental [tailnet support](tailnet.md) can join the tailnet itself.
 

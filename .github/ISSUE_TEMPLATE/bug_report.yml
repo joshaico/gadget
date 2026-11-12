@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. Security problems go through the [security policy](https://github.com/Adolanium/hermes-gadget-sdk/security/advisories/new) instead.
+        Thanks for reporting. Security problems go through the [security policy](https://github.com/joshaico/gadget/security/advisories/new) instead.
   - type: textarea
     id: what
     attributes:
@@ -51,7 +51,7 @@ body:
     attributes:
       label: Diagnostics report
       description: |
-        For anything on a device, plug the board in and save its report: **Save a diagnostics report** under Troubleshooting on the [browser installer](https://adolanium.github.io/hermes-gadget-sdk/), or `hermes-gadget diag --port <port>`. Attach the file (or paste it here).
+        For anything on a device, plug the board in and save its report: **Save a diagnostics report** under Troubleshooting on the [browser installer](https://joshaico.github.io/gadget/), or `hermes-gadget diag --port <port>`. Attach the file (or paste it here).
       render: text
   - type: textarea
     id: logs

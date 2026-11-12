@@ -25,7 +25,7 @@ Choose the commands for your terminal.
 Run in PowerShell:
 
 ```powershell
-git clone https://github.com/Adolanium/hermes-gadget-sdk.git
+git clone https://github.com/joshaico/gadget.git
 cd hermes-gadget-sdk
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -40,7 +40,7 @@ If PowerShell blocks activation, use `.\.venv\Scripts\python.exe -m pip` and `.\
 Run in Terminal:
 
 ```bash
-git clone https://github.com/Adolanium/hermes-gadget-sdk.git
+git clone https://github.com/joshaico/gadget.git
 cd hermes-gadget-sdk
 python3 -m venv .venv
 source .venv/bin/activate
@@ -53,7 +53,7 @@ hermes-gadget build-sim --test
 Run in your terminal:
 
 ```bash
-git clone https://github.com/Adolanium/hermes-gadget-sdk.git
+git clone https://github.com/joshaico/gadget.git
 cd hermes-gadget-sdk
 python3 -m venv .venv
 source .venv/bin/activate

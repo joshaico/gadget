@@ -8,14 +8,14 @@
 
   **Give your Hermes a place on your desk.**
 
-  This is the Hermes gateway plugin for [Hermes Gadget](https://github.com/Adolanium/hermes-gadget-sdk) devices.
+  This is the Joshaico gateway plugin for [Joshaico Gadget](https://github.com/joshaico/gadget) devices.
   Hold a button on a small ESP32 board, ask a question, and hear your own Hermes answer.
 
   <sub>POWERED BY <a href="https://github.com/NousResearch/hermes-agent">HERMES AGENT</a> &nbsp;·&nbsp; COMMUNITY PLUGIN &nbsp;·&nbsp; VERSION 0.5.0</sub>
 
   <br /><br />
 
-  [Install it](#install) &nbsp;·&nbsp; [What it adds](#what-it-adds) &nbsp;·&nbsp; [What it does on your machine](#what-it-does-on-your-machine) &nbsp;·&nbsp; [Website](https://adolanium.github.io/hermes-gadget-sdk/)
+  [Install it](#install) &nbsp;·&nbsp; [What it adds](#what-it-adds) &nbsp;·&nbsp; [What it does on your machine](#what-it-does-on-your-machine) &nbsp;·&nbsp; [Website](https://joshaico.github.io/gadget/)
 
 </div>
 
@@ -25,18 +25,19 @@
 
 Hermes Gadget adds a messaging platform to the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway. Each gadget is a chat: you speak, Hermes's speech-to-text turns it into a message, your agent answers with its usual tools, memory and skills, and the reply is shown on the device and spoken through Hermes's text-to-speech. Unknown devices go through Hermes's own pairing codes, and command approvals appear on the device as yes/no questions.
 
-This directory is the plugin. The rest of the [repository](https://github.com/Adolanium/hermes-gadget-sdk) holds the device firmware, a [browser installer](https://adolanium.github.io/hermes-gadget-sdk/installer.html), a Raspberry Pi client and a desktop simulator.
+This directory is the plugin. The rest of the [repository](https://github.com/joshaico/gadget) holds the device firmware, a [browser installer](https://joshaico.github.io/gadget/installer.html), a Raspberry Pi client and a desktop simulator.
 
 ## Install
 
-You need Hermes Agent 0.21.6 or newer, and a speech-to-text provider and voice set up in Hermes if you want to talk to the gadget.
+You need Joshaico 0.21.6 or newer, and a speech-to-text provider and voice set up in Joshaico if you want to talk to the gadget.
+
+The plugin ships with Joshaico. Turn the gateway on and pick Gadget:
 
 ```bash
-hermes plugins install https://github.com/Adolanium/hermes-gadget-sdk/tree/main/plugin --enable
-hermes gateway setup
+joshaico gateway setup
 ```
 
-Choose **Hermes Gadget** in setup and restart the gateway when it asks. Then set up a board from the [installer](https://adolanium.github.io/hermes-gadget-sdk/installer.html) or try the [desktop simulator](https://adolanium.github.io/hermes-gadget-sdk/docs/desktop.html). The [Connect Hermes guide](../docs/connect-hermes.md) covers each step.
+Restart the gateway when it asks. Then set up a board from the [installer](https://joshaico.github.io/gadget/installer.html) or try the [desktop simulator](https://joshaico.github.io/gadget/docs/desktop.html). The [Connect Joshaico guide](../docs/connect-hermes.md) covers each step.
 
 ## What it adds
 

@@ -17,7 +17,7 @@ from conftest import REPO, requires_hermes
 
 pytestmark = requires_hermes
 
-SOURCE = "https://github.com/Adolanium/hermes-gadget-sdk.git#plugin"
+SOURCE = "https://github.com/joshaico/gadget.git#plugin"
 
 
 def test_hermes_lets_the_plugin_install_from_github(tmp_path):

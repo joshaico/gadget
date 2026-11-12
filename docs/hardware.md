@@ -1245,7 +1245,7 @@ This is an experimental profile. Touch input/coordinates, actual microphone capt
 
 ## Build and flash
 
-**No toolchain needed:** the [browser installer](https://adolanium.github.io/hermes-gadget-sdk/) flashes each release's prebuilt firmware from Chrome or Edge, then sets up Wi-Fi and pairing. The release files are also on the [releases page](https://github.com/Adolanium/hermes-gadget-sdk/releases), for `esptool.py write_flash 0x0 hermes-gadget-<board>-<version>.bin`, which also erases the board's settings.
+**No toolchain needed:** the [browser installer](https://joshaico.github.io/gadget/) flashes each release's prebuilt firmware from Chrome or Edge, then sets up Wi-Fi and pairing. The release files are also on the [releases page](https://github.com/joshaico/gadget/releases), for `esptool.py write_flash 0x0 hermes-gadget-<board>-<version>.bin`, which also erases the board's settings.
 
 To build it yourself, with ESP-IDF 5.3 or later installed (`. $IDF_PATH/export.sh`):
 
@@ -1280,7 +1280,7 @@ hermes gadget update "Kitchen" --latest     # the newest release's firmware for 
 hermes gadget update "Kitchen" firmware/esp32/.pio/build/esp32s3-touch-amoled-175/firmware.bin
 ```
 
-- `--latest` reads the newest [release](https://github.com/Adolanium/hermes-gadget-sdk/releases)'s manifest, picks the image for the device's board, and checks its size and SHA-256 against the manifest before using it. A device that already runs that version or a newer one, including a source build such as `0.4.0-12-gabc1234`, is left alone, and a device whose version can't be read is refused; `--force` installs the release anyway. `hermes gadget devices` shows the version each device runs.
+- `--latest` reads the newest [release](https://github.com/joshaico/gadget/releases)'s manifest, picks the image for the device's board, and checks its size and SHA-256 against the manifest before using it. A device that already runs that version or a newer one, including a source build such as `0.4.0-12-gabc1234`, is left alone, and a device whose version can't be read is refused; `--force` installs the release anyway. `hermes gadget devices` shows the version each device runs.
 - The gateway installs the image as soon as the device is online, and the command waits and reports progress (`--no-wait` returns at once).
 - The device shows the progress, restarts into the new firmware, and keeps it once it reaches Hermes again.
 - If the new firmware doesn't reach Hermes within 5 minutes, or crashes before then, the device goes back to the previous one by itself.

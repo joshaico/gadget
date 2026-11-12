@@ -389,13 +389,12 @@ def test_every_board_with_psram_has_the_network_buffers():
     assert checked > 20
 
 
-def test_release_notes_pin_the_plugin_to_the_release_commit(project, tmp_path):
+def test_release_notes_point_at_the_bundled_plugin(project, tmp_path):
     project("breadboard")
     notes = tmp_path / "notes.md"
     commit = "75b8a689bce3925d46de5c256f53d343ae6b876f"
     assert _package(project, "--all", "--out", str(tmp_path / "dist"), "--notes", str(notes), "--commit", commit) == 0
-    assert (f"hermes plugins install https://github.com/Adolanium/hermes-gadget-sdk.git#plugin --ref {commit} --enable"
-            in notes.read_text(encoding="utf-8"))
+    assert "joshaico gateway setup" in notes.read_text(encoding="utf-8")
 
 
 def test_release_notes_open_with_the_changelog_section(project, tmp_path):
@@ -408,7 +407,7 @@ def test_release_notes_open_with_the_changelog_section(project, tmp_path):
     assert _package(project, "--all", "--out", str(tmp_path / "dist"), "--notes", str(notes),
                     "--changelog", str(changelog)) == 0
     text = notes.read_text(encoding="utf-8")
-    assert text.startswith("Hermes Gadget firmware 0.2.0.\n\n### Firmware\n\n- Fixed the thing.\n")
+    assert text.startswith("Joshaico Gadget firmware 0.2.0.\n\n### Firmware\n\n- Fixed the thing.\n")
     assert "Not yet" not in text and "Older" not in text
     assert package_release.changelog_section(changelog.read_text(encoding="utf-8"), "9.9.9") == ""
 

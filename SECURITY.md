@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately, through GitHub's **[Report a vulnerability](https://github.com/Adolanium/hermes-gadget-sdk/security/advisories/new)** form on this repository, rather than in a public issue or pull request. Include what you found, how to reproduce it, and which part it affects.
+Please report vulnerabilities privately, through GitHub's **[Report a vulnerability](https://github.com/joshaico/gadget/security/advisories/new)** form on this repository, rather than in a public issue or pull request. Include what you found, how to reproduce it, and which part it affects.
 
 You'll get a reply on the advisory, and the fix is discussed there before anything is published. Reports are credited in the advisory unless you'd rather stay anonymous.
 

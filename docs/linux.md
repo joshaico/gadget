@@ -15,9 +15,9 @@ your network and SSH access there, then boot the Pi with a suitable power supply
 The Linux client uses the OS network settings.
 
 Download the `hermes-gadget-VERSION-linux-arm64.tar.gz` archive and its `.sha256`
-file from a [release](https://github.com/Adolanium/hermes-gadget-sdk/releases).
+file from a [release](https://github.com/joshaico/gadget/releases).
 To try unreleased changes, the same files are in the `linux-arm64` artifact of a
-successful `main` [CI run](https://github.com/Adolanium/hermes-gadget-sdk/actions/workflows/ci.yml);
+successful `main` [CI run](https://github.com/joshaico/gadget/actions/workflows/ci.yml);
 extract the artifact ZIP first.
 
 In a directory containing just the chosen archive and checksum file:
@@ -70,7 +70,7 @@ Raspberry Pi OS:
 ```bash
 sudo apt update
 sudo apt install git python3-venv cmake build-essential
-git clone https://github.com/Adolanium/hermes-gadget-sdk.git
+git clone https://github.com/joshaico/gadget.git
 cd hermes-gadget-sdk
 python3 -m venv .venv
 . .venv/bin/activate

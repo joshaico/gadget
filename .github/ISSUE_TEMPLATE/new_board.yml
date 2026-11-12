@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Boards with an ESP32-S3, PSRAM, a screen, a microphone and a speaker fit best. [docs/porting.md](https://github.com/Adolanium/hermes-gadget-sdk/blob/main/docs/porting.md) explains what a port involves.
+        Boards with an ESP32-S3, PSRAM, a screen, a microphone and a speaker fit best. [docs/porting.md](https://github.com/joshaico/gadget/blob/main/docs/porting.md) explains what a port involves.
   - type: input
     id: board
     attributes:

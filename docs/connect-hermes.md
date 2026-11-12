@@ -5,7 +5,7 @@ Use your own Hermes Agent for replies, tools, memory, and skills. Run the comman
 ## 1. Install the plugin
 
 ```bash
-hermes plugins install https://github.com/Adolanium/hermes-gadget-sdk/tree/main/plugin --enable
+hermes plugins install https://github.com/joshaico/gadget/tree/main/plugin --enable
 hermes gateway setup
 ```
 
@@ -13,7 +13,7 @@ The plugin needs Hermes Agent 0.21.6 or newer. Choose **Hermes Gadget**. Restart
 
 **You know it worked when:** `hermes gadget info` shows the gadget configuration and device URL. Keep the gateway running so devices can connect.
 
-The command installs from `main`. To match a firmware release, use the command in the [release notes](https://github.com/Adolanium/hermes-gadget-sdk/releases), which pins the plugin with `--ref`.
+The command installs from `main`. To match a firmware release, use the command in the [release notes](https://github.com/joshaico/gadget/releases), which pins the plugin with `--ref`.
 
 Install from the `plugin` directory, as these commands do, not from the repository root. Hermes scans everything under the address you give it before it installs. The root is not a plugin, and it also holds the Raspberry Pi system installer (`linux/install.sh`), which must run as root and writes under `/etc`. Hermes rates the root "dangerous" and refuses to install it, even with `--force`.
 

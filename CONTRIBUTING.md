@@ -4,13 +4,13 @@ Thanks for helping. Bug reports from real boards, new board support, fixes and d
 
 ## Reporting a bug
 
-Open an [issue](https://github.com/Adolanium/hermes-gadget-sdk/issues/new/choose) and say which board, firmware version and Hermes version you're on. For anything on a device, attach a diagnostics report:
+Open an [issue](https://github.com/joshaico/gadget/issues/new/choose) and say which board, firmware version and Hermes version you're on. For anything on a device, attach a diagnostics report:
 
 ```bash
 hermes-gadget diag --port COM5      # or /dev/ttyACM0, /dev/cu.usbmodem101, ...
 ```
 
-The [browser installer](https://adolanium.github.io/hermes-gadget-sdk/) saves the same report without Python: **Troubleshooting** → **Something else** → **Save a diagnostics report**. If the installer was involved, the **Technical details** log at the bottom of its page helps too.
+The [browser installer](https://joshaico.github.io/gadget/) saves the same report without Python: **Troubleshooting** → **Something else** → **Save a diagnostics report**. If the installer was involved, the **Technical details** log at the bottom of its page helps too.
 
 Security problems go through [SECURITY.md](SECURITY.md) instead, not a public issue.
 

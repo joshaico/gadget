@@ -362,7 +362,7 @@ def cmd_face(args) -> int:
         return 1
     if not face.MASTER.is_file():  # a face goes into the firmware, so it's made in a checkout
         print("hermes-gadget face runs from a checkout of the SDK (git clone "
-              "https://github.com/Adolanium/hermes-gadget-sdk), where the firmware it builds into lives.",
+              "https://github.com/joshaico/gadget), where the firmware it builds into lives.",
               file=sys.stderr)
         return 1
 

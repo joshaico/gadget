@@ -4,7 +4,7 @@ If Hermes runs on a computer that is only reachable on your [Tailscale](https://
 
 This is experimental, and release firmware doesn't include it: you build the firmware yourself with the two changes in [hardware verification](hardware-validation.md#tailnet), on a board with PSRAM. It adds two things to the gadget:
 
-- **A third-party Tailscale client.** The gadget uses [TailTiny](https://github.com/Asimmimx/tailtiny), an independent Tailscale client for ESP32. It isn't made or supported by Tailscale. This project adapts it for the gadget; [the list of changes](https://github.com/Adolanium/hermes-gadget-sdk/blob/main/firmware/esp32/components/TAILTINY.md) includes two to its encryption and TLS code.
+- **A third-party Tailscale client.** The gadget uses [TailTiny](https://github.com/Asimmimx/tailtiny), an independent Tailscale client for ESP32. It isn't made or supported by Tailscale. This project adapts it for the gadget; [the list of changes](https://github.com/joshaico/gadget/blob/main/firmware/esp32/components/TAILTINY.md) includes two to its encryption and TLS code.
 - **An auth key stored on the device.** It lets the gadget join your tailnet, so treat it like a password: see [keep the key safe](#keep-the-key-safe).
 
 If you would rather not build firmware, [Tailscale Funnel](tailscale-funnel.md) works with every board. It makes the gadget endpoint public, and device pairing guards it.
